@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { getProviderBySlug, getServicesByProvider, getTodayAppointments } from "@/lib/data";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/session";
+import { getOwnedProvider, getServicesByProvider, getTodayAppointments } from "@/lib/data";
 import { fromPrice, euro, SIZE_LABELS, COAT_LABELS } from "@/lib/pricing";
 import type { AppointmentStatus } from "@/lib/types";
 
@@ -17,12 +18,16 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
 const STATUS_SOLID: AppointmentStatus[] = ["aanwezig", "in_behandeling"];
 
 export default async function DashboardPage() {
-  const provider = await getProviderBySlug("trimsalon-sanne");
-  if (!provider) notFound();
+  const user = await getCurrentUser();
+  if (!user) redirect("/inloggen");
+  if (user.role !== "aanbieder") redirect("/mijn-dieren");
+
+  const provider = await getOwnedProvider();
+  if (!provider) redirect("/dashboard/onboarding");
 
   const [diensten, todayAppointments] = await Promise.all([
     getServicesByProvider(provider.id),
-    getTodayAppointments("trimsalon-sanne"),
+    getTodayAppointments(provider.id),
   ]);
 
   const today = new Date().toLocaleDateString("nl-NL", {
@@ -38,7 +43,7 @@ export default async function DashboardPage() {
     <main className="mx-auto max-w-[1200px] px-6 py-10">
       <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
         <div>
-          <p className="text-eyebrow">Trimsalon Sanne · dashboard</p>
+          <p className="text-eyebrow">{provider.name} · dashboard</p>
           <h1 className="text-display capitalize">{today}</h1>
         </div>
         <div className="flex gap-2">
@@ -71,6 +76,11 @@ export default async function DashboardPage() {
 
           <h2 className="text-h2 mb-4">Daglijst</h2>
           <div className="flex flex-col gap-3">
+            {todayAppointments.length === 0 && (
+              <p className="card p-5 text-muted text-[0.9375rem]">
+                Nog geen afspraken voor vandaag.
+              </p>
+            )}
             {todayAppointments.map((a) => {
               const solid = STATUS_SOLID.includes(a.status);
               return (
@@ -138,8 +148,8 @@ export default async function DashboardPage() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted">Bezetting</span>
-                <span className="font-medium">78%</span>
+                <span className="text-muted">Diensten</span>
+                <span className="font-medium">{diensten.length}</span>
               </div>
             </div>
           </div>
@@ -152,6 +162,11 @@ export default async function DashboardPage() {
               </Link>
             </div>
             <div className="flex flex-col gap-3">
+              {diensten.length === 0 && (
+                <p className="text-[0.9375rem] text-muted">
+                  Je hebt nog geen diensten. Die voeg je binnenkort hier toe.
+                </p>
+              )}
               {diensten.map((s) => (
                 <div
                   key={s.id}

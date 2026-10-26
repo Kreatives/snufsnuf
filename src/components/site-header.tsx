@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/session";
+import { logoutAction } from "@/lib/auth-actions";
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const user = await getCurrentUser();
+
   return (
     <header className="border-b border-line bg-bg/80 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto max-w-[1200px] px-6 h-16 flex items-center justify-between">
@@ -12,15 +16,33 @@ export function SiteHeader() {
           <Link href="/" className="text-muted hover:text-ink transition-colors">
             Zoeken
           </Link>
-          <Link
-            href="/dashboard"
-            className="text-muted hover:text-ink transition-colors"
-          >
-            Voor aanbieders
-          </Link>
-          <Link href="/dashboard" className="btn btn-ghost h-9 px-4">
-            Inloggen
-          </Link>
+          {user ? (
+            <>
+              <Link
+                href={user.role === "aanbieder" ? "/dashboard" : "/mijn-dieren"}
+                className="text-muted hover:text-ink transition-colors"
+              >
+                {user.role === "aanbieder" ? "Dashboard" : "Mijn dieren"}
+              </Link>
+              <form action={logoutAction}>
+                <button type="submit" className="btn btn-ghost h-9 px-4">
+                  Uitloggen
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/registreren"
+                className="text-muted hover:text-ink transition-colors"
+              >
+                Registreren
+              </Link>
+              <Link href="/inloggen" className="btn btn-ghost h-9 px-4">
+                Inloggen
+              </Link>
+            </>
+          )}
         </nav>
       </div>
     </header>

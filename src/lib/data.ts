@@ -149,11 +149,27 @@ export async function getServiceById(id: string): Promise<Service | null> {
 
 export async function getSavedAnimals(): Promise<Animal[]> {
   const supabase = await db();
+  // RLS beperkt dit tot de dieren van de ingelogde baasje; gast → leeg.
   const { data } = await supabase
     .from("animals")
     .select("*")
     .order("created_at", { ascending: true });
   return (data as AnimalRow[] | null)?.map(mapAnimal) ?? [];
+}
+
+/** De salon van de ingelogde aanbieder (eigenaar), ongeacht status. */
+export async function getOwnedProvider(): Promise<Provider | null> {
+  const supabase = await db();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("providers")
+    .select("*")
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+  return data ? mapProvider(data as ProviderRow) : null;
 }
 
 type AppointmentRow = {
@@ -177,10 +193,8 @@ type AppointmentRow = {
   status: AppointmentStatus;
 };
 
-export async function getTodayAppointments(providerSlug: string): Promise<Appointment[]> {
+export async function getTodayAppointments(providerId: string): Promise<Appointment[]> {
   const supabase = await db();
-  const provider = await getProviderBySlug(providerSlug);
-  if (!provider) return [];
 
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -190,7 +204,7 @@ export async function getTodayAppointments(providerSlug: string): Promise<Appoin
   const { data } = await supabase
     .from("appointments")
     .select("*")
-    .eq("provider_id", provider.id)
+    .eq("provider_id", providerId)
     .gte("starts_at", start.toISOString())
     .lt("starts_at", end.toISOString())
     .order("starts_at", { ascending: true });
