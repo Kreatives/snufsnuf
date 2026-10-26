@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProviderBySlug, getServiceById, getSavedAnimals } from "@/lib/data";
-import { getSlots } from "@/lib/slots";
+import { getAvailableSlots } from "@/lib/availability";
 import { BookingFlow } from "@/components/booking-flow";
 
 export default async function BookingPage({
@@ -14,7 +14,8 @@ export default async function BookingPage({
   const service = await getServiceById(serviceId);
   if (!provider || !service || service.providerId !== provider.id) notFound();
 
-  const slots = getSlots(provider.slug);
+  const shortest = Math.min(...service.pricing.map((p) => p.durationMin));
+  const slots = await getAvailableSlots(provider.id, { days: 14, durationMin: shortest });
   const savedAnimals = await getSavedAnimals();
 
   return (

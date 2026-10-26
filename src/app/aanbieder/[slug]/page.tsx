@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProviderBySlug, getServicesByProvider } from "@/lib/data";
-import { getSlots } from "@/lib/slots";
+import { getAvailableSlots } from "@/lib/availability";
 import { fromPrice, euro, formatDuration } from "@/lib/pricing";
+import type { Slot } from "@/lib/types";
 
-function groupByDate(slots: ReturnType<typeof getSlots>) {
+function groupByDate(slots: Slot[]) {
   const map = new Map<string, string[]>();
   for (const s of slots) {
     map.set(s.date, [...(map.get(s.date) ?? []), s.time]);
@@ -22,7 +23,7 @@ export default async function ProviderPage({
   if (!provider) notFound();
 
   const svc = await getServicesByProvider(provider.id);
-  const slots = groupByDate(getSlots(provider.slug));
+  const slots = groupByDate(await getAvailableSlots(provider.id, { days: 14 }));
 
   return (
     <main className="mx-auto max-w-[1200px] px-6 py-10">

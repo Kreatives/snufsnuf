@@ -1,7 +1,7 @@
 import Link from "next/link";
-import type { Provider } from "@/lib/types";
+import type { Provider, Slot } from "@/lib/types";
 import { getServicesByProvider } from "@/lib/data";
-import { getSlots } from "@/lib/slots";
+import { getAvailableSlots } from "@/lib/availability";
 import { fromPrice, euro } from "@/lib/pricing";
 
 const CATEGORY_LABEL: Record<Provider["category"], string> = {
@@ -13,17 +13,18 @@ const CATEGORY_LABEL: Record<Provider["category"], string> = {
   uitlaatservice: "Uitlaatservice",
 };
 
-function firstFreeLabel(providerSlug: string): string {
-  const slots = getSlots(providerSlug);
-  if (slots.length === 0) return "Geen vrije plek";
-  const s = slots[0];
-  const date = new Date(s.date);
+function freeLabel(slot: Slot | undefined): string {
+  if (!slot) return "Geen vrije plek";
+  const date = new Date(slot.date);
   const day = date.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" });
-  return `${day}, ${s.time}`;
+  return `${day}, ${slot.time}`;
 }
 
 export async function ProviderCard({ provider }: { provider: Provider }) {
-  const svc = await getServicesByProvider(provider.id);
+  const [svc, slots] = await Promise.all([
+    getServicesByProvider(provider.id),
+    getAvailableSlots(provider.id, { days: 14 }),
+  ]);
   const cheapest = svc.length ? Math.min(...svc.map(fromPrice)) : 0;
 
   return (
@@ -58,11 +59,11 @@ export async function ProviderCard({ provider }: { provider: Provider }) {
         <div className="mt-auto pt-3 border-t border-line flex items-end justify-between">
           <div>
             <p className="text-eyebrow">Vanaf</p>
-            <p className="text-h3">{euro(cheapest)}</p>
+            <p className="text-h3">{svc.length ? euro(cheapest) : "—"}</p>
           </div>
           <div className="text-right">
             <p className="text-eyebrow">Eerst vrij</p>
-            <p className="text-[0.9375rem] font-medium">{firstFreeLabel(provider.slug)}</p>
+            <p className="text-[0.9375rem] font-medium">{freeLabel(slots[0])}</p>
           </div>
         </div>
 

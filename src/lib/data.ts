@@ -157,6 +157,17 @@ export async function getSavedAnimals(): Promise<Animal[]> {
   return (data as AnimalRow[] | null)?.map(mapAnimal) ?? [];
 }
 
+export async function getProviderHours(
+  providerId: string,
+): Promise<{ weekday: number; open_time: string; close_time: string }[]> {
+  const supabase = await db();
+  const { data } = await supabase
+    .from("provider_hours")
+    .select("weekday, open_time, close_time")
+    .eq("provider_id", providerId);
+  return (data as { weekday: number; open_time: string; close_time: string }[] | null) ?? [];
+}
+
 /** De salon van de ingelogde aanbieder (eigenaar), ongeacht status. */
 export async function getOwnedProvider(): Promise<Provider | null> {
   const supabase = await db();

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getOwnedProvider, getServicesByProvider, getTodayAppointments } from "@/lib/data";
+import { DashboardNav } from "@/components/dashboard-nav";
 import { fromPrice, euro, SIZE_LABELS, COAT_LABELS } from "@/lib/pricing";
 import type { AppointmentStatus } from "@/lib/types";
 
@@ -46,11 +47,7 @@ export default async function DashboardPage() {
           <p className="text-eyebrow">{provider.name} · dashboard</p>
           <h1 className="text-display capitalize">{today}</h1>
         </div>
-        <div className="flex gap-2">
-          <span className="chip chip-solid">Agenda</span>
-          <span className="chip">Diensten</span>
-          <span className="chip">Klanten</span>
-        </div>
+        <DashboardNav active="/dashboard" />
       </div>
 
       <div className="grid lg:grid-cols-12 gap-10">
