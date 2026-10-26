@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProvider, servicesFor, getSlots } from "@/lib/mock";
+import { getProviderBySlug, getServicesByProvider } from "@/lib/data";
+import { getSlots } from "@/lib/slots";
 import { fromPrice, euro, formatDuration } from "@/lib/pricing";
 
 function groupByDate(slots: ReturnType<typeof getSlots>) {
@@ -17,11 +18,11 @@ export default async function ProviderPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const provider = getProvider(slug);
+  const provider = await getProviderBySlug(slug);
   if (!provider) notFound();
 
-  const svc = servicesFor(provider.id);
-  const slots = groupByDate(getSlots(provider.id));
+  const svc = await getServicesByProvider(provider.id);
+  const slots = groupByDate(getSlots(provider.slug));
 
   return (
     <main className="mx-auto max-w-[1200px] px-6 py-10">

@@ -1,7 +1,8 @@
-import { providers } from "@/lib/mock";
+import { getProviders } from "@/lib/data";
 import { ProviderCard } from "@/components/provider-card";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const providers = await getProviders();
   return (
     <main className="mx-auto max-w-[1200px] px-6">
       <section className="py-20 md:py-28 grid md:grid-cols-12 gap-8 items-end">

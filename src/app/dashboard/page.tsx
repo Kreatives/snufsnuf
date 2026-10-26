@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { todayAppointments, servicesFor } from "@/lib/mock";
+import { notFound } from "next/navigation";
+import { getProviderBySlug, getServicesByProvider, getTodayAppointments } from "@/lib/data";
 import { fromPrice, euro, SIZE_LABELS, COAT_LABELS } from "@/lib/pricing";
 import type { AppointmentStatus } from "@/lib/types";
 
@@ -15,13 +16,20 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
 
 const STATUS_SOLID: AppointmentStatus[] = ["aanwezig", "in_behandeling"];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const provider = await getProviderBySlug("trimsalon-sanne");
+  if (!provider) notFound();
+
+  const [diensten, todayAppointments] = await Promise.all([
+    getServicesByProvider(provider.id),
+    getTodayAppointments("trimsalon-sanne"),
+  ]);
+
   const today = new Date().toLocaleDateString("nl-NL", {
     weekday: "long",
     day: "numeric",
     month: "long",
   });
-  const diensten = servicesFor("p-sanne");
   const alerts = todayAppointments.filter(
     (a) => a.animal.biteRisk >= 2 || a.animal.medicalNote,
   );

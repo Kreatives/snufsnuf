@@ -1,16 +1,20 @@
 import Link from "next/link";
 import type { Provider } from "@/lib/types";
-import { servicesFor, getSlots } from "@/lib/mock";
+import { getServicesByProvider } from "@/lib/data";
+import { getSlots } from "@/lib/slots";
 import { fromPrice, euro } from "@/lib/pricing";
 
 const CATEGORY_LABEL: Record<Provider["category"], string> = {
   trimsalon: "Trimsalon",
   kattentrimsalon: "Kattentrimsalon",
   mobiele_trimmer: "Mobiel, komt aan huis",
+  dagopvang: "Dagopvang",
+  pension: "Pension",
+  uitlaatservice: "Uitlaatservice",
 };
 
-function firstFreeLabel(providerId: string): string {
-  const slots = getSlots(providerId);
+function firstFreeLabel(providerSlug: string): string {
+  const slots = getSlots(providerSlug);
   if (slots.length === 0) return "Geen vrije plek";
   const s = slots[0];
   const date = new Date(s.date);
@@ -18,8 +22,8 @@ function firstFreeLabel(providerId: string): string {
   return `${day}, ${s.time}`;
 }
 
-export function ProviderCard({ provider }: { provider: Provider }) {
-  const svc = servicesFor(provider.id);
+export async function ProviderCard({ provider }: { provider: Provider }) {
+  const svc = await getServicesByProvider(provider.id);
   const cheapest = svc.length ? Math.min(...svc.map(fromPrice)) : 0;
 
   return (
@@ -58,7 +62,7 @@ export function ProviderCard({ provider }: { provider: Provider }) {
           </div>
           <div className="text-right">
             <p className="text-eyebrow">Eerst vrij</p>
-            <p className="text-[0.9375rem] font-medium">{firstFreeLabel(provider.id)}</p>
+            <p className="text-[0.9375rem] font-medium">{firstFreeLabel(provider.slug)}</p>
           </div>
         </div>
 

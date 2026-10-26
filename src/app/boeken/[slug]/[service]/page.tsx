@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProvider, getService, getSlots, savedAnimals } from "@/lib/mock";
+import { getProviderBySlug, getServiceById, getSavedAnimals } from "@/lib/data";
+import { getSlots } from "@/lib/slots";
 import { BookingFlow } from "@/components/booking-flow";
 
 export default async function BookingPage({
@@ -9,11 +10,12 @@ export default async function BookingPage({
   params: Promise<{ slug: string; service: string }>;
 }) {
   const { slug, service: serviceId } = await params;
-  const provider = getProvider(slug);
-  const service = getService(serviceId);
+  const provider = await getProviderBySlug(slug);
+  const service = await getServiceById(serviceId);
   if (!provider || !service || service.providerId !== provider.id) notFound();
 
-  const slots = getSlots(provider.id);
+  const slots = getSlots(provider.slug);
+  const savedAnimals = await getSavedAnimals();
 
   return (
     <main className="mx-auto max-w-[1200px] px-6 py-10">

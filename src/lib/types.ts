@@ -9,7 +9,10 @@ export type Skill = "angsthond" | "kat" | "handstrippen" | "senior" | "puppy";
 export type ProviderCategory =
   | "trimsalon"
   | "kattentrimsalon"
-  | "mobiele_trimmer";
+  | "mobiele_trimmer"
+  | "dagopvang"
+  | "pension"
+  | "uitlaatservice";
 
 export interface PricingRule {
   sizeClass: SizeClass;

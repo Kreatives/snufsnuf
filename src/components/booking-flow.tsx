@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Animal, Provider, Service, Slot, SizeClass, CoatType } from "@/lib/types";
-import { BREED_LIBRARY } from "@/lib/mock";
+import { BREED_LIBRARY } from "@/lib/breeds";
+import { createBooking } from "@/lib/actions";
 import {
   resolvePrice,
   euro,
@@ -49,7 +50,7 @@ export function BookingFlow({ provider, service, slots, savedAnimals }: Props) {
   });
   const [slot, setSlot] = useState<Slot | null>(null);
   const [intake, setIntake] = useState({ email: "", phone: "", lastGroom: "", agree: false });
-  const [paid, setPaid] = useState(false);
+  const [, setPaid] = useState(false);
 
   const chosenAnimal: {
     name: string;
@@ -58,6 +59,7 @@ export function BookingFlow({ provider, service, slots, savedAnimals }: Props) {
     breed: string | null;
     biteRisk: number;
     muzzle: boolean;
+    behavior: string[];
   } | null = useMemo(() => {
     if (animalId === "new") {
       return {
@@ -67,6 +69,7 @@ export function BookingFlow({ provider, service, slots, savedAnimals }: Props) {
         breed: draft.breed || null,
         biteRisk: draft.biteRisk,
         muzzle: draft.biteRisk >= 2,
+        behavior: [draft.behavior],
       };
     }
     const a = savedAnimals.find((x) => x.id === animalId);
@@ -78,8 +81,52 @@ export function BookingFlow({ provider, service, slots, savedAnimals }: Props) {
       breed: a.breed,
       biteRisk: a.biteRisk,
       muzzle: a.muzzleRequired,
+      behavior: a.behavior,
     };
   }, [animalId, draft, savedAnimals]);
+
+  const [idemKey] = useState(() =>
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `idem-${Date.now()}`,
+  );
+
+  async function confirmBooking(): Promise<string | null> {
+    if (!price || !slot || !chosenAnimal) return "Er ontbreekt nog een stap.";
+    const res = await createBooking({
+      providerId: provider.id,
+      serviceId: service.id,
+      serviceName: service.name,
+      staff: slot.staff,
+      date: slot.date,
+      time: slot.time,
+      durationMin: price.durationMin,
+      priceCents: price.fromCents,
+      isRequest: false,
+      idempotencyKey: idemKey,
+      owner: intake.email ? intake.email.split("@")[0] : "Nieuwe klant",
+      animal: {
+        name: chosenAnimal.name,
+        breed: chosenAnimal.breed,
+        sizeClass: chosenAnimal.sizeClass,
+        coatType: chosenAnimal.coatType,
+        biteRisk: chosenAnimal.biteRisk,
+        muzzleRequired: chosenAnimal.muzzle,
+        behavior: chosenAnimal.behavior,
+      },
+      intake: {
+        email: intake.email,
+        phone: intake.phone,
+        lastGroom: intake.lastGroom,
+      },
+    });
+    if (res.ok) {
+      setPaid(true);
+      setStep(4);
+      return null;
+    }
+    return res.error ?? "Er ging iets mis bij het boeken.";
+  }
 
   const price = useMemo(
     () => (chosenAnimal ? resolvePrice(service, chosenAnimal) : null),
@@ -367,11 +414,7 @@ export function BookingFlow({ provider, service, slots, savedAnimals }: Props) {
             provider={provider}
             service={service}
             amountCents={price.fromCents}
-            paid={paid}
-            onPaid={() => {
-              setPaid(true);
-              setStep(4);
-            }}
+            onPay={confirmBooking}
           />
         )}
 
@@ -514,17 +557,16 @@ function PayStep({
   provider,
   service,
   amountCents,
-  paid,
-  onPaid,
+  onPay,
 }: {
   provider: Provider;
   service: Service;
   amountCents: number;
-  paid: boolean;
-  onPaid: () => void;
+  onPay: () => Promise<string | null>;
 }) {
   const [method, setMethod] = useState("ideal");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <section className="mt-8">
@@ -560,14 +602,20 @@ function PayStep({
       <button
         type="button"
         className="btn btn-primary w-full mt-5"
-        disabled={busy || paid}
-        onClick={() => {
+        disabled={busy}
+        onClick={async () => {
           setBusy(true);
-          setTimeout(onPaid, 900);
+          setError(null);
+          const err = await onPay();
+          if (err) {
+            setError(err);
+            setBusy(false);
+          }
         }}
       >
         {busy ? "Bezig met afrekenen…" : `Betaal ${euro(amountCents)} bij ${provider.name}`}
       </button>
+      {error && <p className="chip chip-alert w-fit mt-3">{error}</p>}
       <p className="text-[0.8125rem] text-muted mt-3">
         Prototype: er wordt niet echt afgerekend. In de echte versie loopt dit via Stripe
         Connect, dus het geld landt bij de aanbieder.
