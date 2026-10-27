@@ -204,14 +204,28 @@ type AppointmentRow = {
   status: AppointmentStatus;
 };
 
-export async function getTodayAppointments(providerId: string): Promise<Appointment[]> {
+export interface AgendaItem {
+  id: string;
+  dateISO: string; // YYYY-MM-DD in Europe/Amsterdam
+  startMin: number; // minuten sinds middernacht (Amsterdam)
+  durationMin: number;
+  time: string; // "09:00"
+  title: string;
+  animalName: string;
+  owner: string;
+  status: AppointmentStatus;
+  biteRisk: number;
+  muzzle: boolean;
+  topNote: string | null;
+}
+
+/** Afspraken binnen een datumbereik, voor het weekoverzicht in het dashboard. */
+export async function getAgendaItems(
+  providerId: string,
+  start: Date,
+  end: Date,
+): Promise<AgendaItem[]> {
   const supabase = await db();
-
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const end = new Date(start);
-  end.setDate(start.getDate() + 1);
-
   const { data } = await supabase
     .from("appointments")
     .select("*")
@@ -220,31 +234,30 @@ export async function getTodayAppointments(providerId: string): Promise<Appointm
     .lt("starts_at", end.toISOString())
     .order("starts_at", { ascending: true });
 
-  return (data as AppointmentRow[] | null)?.map((r) => ({
-    id: r.id,
-    time: new Date(r.starts_at).toLocaleTimeString("nl-NL", {
+  return (data as AppointmentRow[] | null)?.map((r) => {
+    const d = new Date(r.starts_at);
+    const dateISO = d.toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/Amsterdam",
       hour: "2-digit",
       minute: "2-digit",
-      timeZone: "Europe/Amsterdam",
-    }),
-    durationMin: r.duration_min,
-    owner: r.owner_name,
-    serviceName: r.service_name,
-    staff: r.staff,
-    status: r.status,
-    animal: {
+      hour12: false,
+    }).formatToParts(d);
+    const hh = Number(parts.find((p) => p.type === "hour")?.value ?? "0") % 24;
+    const mm = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+    return {
       id: r.id,
-      name: r.animal.name,
-      species: "hond",
-      breed: r.animal.breed,
-      sizeClass: r.animal.sizeClass,
-      coatType: r.animal.coatType,
-      weightKg: 0,
-      behavior: r.animal.behavior ?? [],
-      biteRisk: r.animal.biteRisk,
-      muzzleRequired: r.animal.muzzleRequired,
-      medicalNote: r.animal.medicalNote ?? null,
+      dateISO,
+      startMin: hh * 60 + mm,
+      durationMin: r.duration_min,
+      time: `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`,
+      title: r.service_name,
+      animalName: r.animal.name,
+      owner: r.owner_name,
+      status: r.status,
+      biteRisk: r.animal.biteRisk ?? 0,
+      muzzle: r.animal.muzzleRequired ?? false,
       topNote: r.animal.topNote ?? null,
-    },
-  })) ?? [];
+    };
+  }) ?? [];
 }
