@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Animal, Provider, Service, Slot, SizeClass, CoatType } from "@/lib/types";
 import { BREED_LIBRARY } from "@/lib/breeds";
 import { createBooking } from "@/lib/actions";
+import { SlotCalendar } from "@/components/slot-calendar";
 import {
   resolvePrice,
   euro,
@@ -147,7 +148,7 @@ export function BookingFlow({ provider, service, slots, savedAnimals }: Props) {
 
   const canNext =
     step === 0
-      ? !!chosenAnimal && (animalId !== "new" || draft.name.trim() !== "")
+      ? !!chosenAnimal && price !== null && (animalId !== "new" || draft.name.trim() !== "")
       : step === 1
         ? !!slot
         : step === 2
@@ -342,6 +343,13 @@ export function BookingFlow({ provider, service, slots, savedAnimals }: Props) {
                 )}
               </div>
             )}
+
+            {chosenAnimal && !price && (
+              <p className="chip chip-alert w-fit mt-4">
+                {service.name} is niet beschikbaar voor maat {SIZE_LABELS[chosenAnimal.sizeClass]}.
+                Kies een andere maat of een andere dienst.
+              </p>
+            )}
           </section>
         )}
 
@@ -507,48 +515,13 @@ function SlotStep({
   slot: Slot | null;
   onSelect: (s: Slot) => void;
 }) {
-  const byDate = new Map<string, Slot[]>();
-  for (const s of slots) byDate.set(s.date, [...(byDate.get(s.date) ?? []), s]);
-
   return (
     <section className="mt-8">
       <h2 className="text-h2 mb-1">Kies een moment</h2>
       <p className="text-muted text-[0.9375rem] mb-6">
         Live beschikbaarheid. Zodra je kiest houden we het slot tien minuten voor je vast.
       </p>
-      <div className="flex flex-col gap-5">
-        {[...byDate.entries()].map(([date, daySlots]) => {
-          const d = new Date(date);
-          return (
-            <div key={date}>
-              <p className="text-[0.875rem] font-medium mb-2 capitalize">
-                {d.toLocaleDateString("nl-NL", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {daySlots.map((s) => {
-                  const active = slot?.date === s.date && slot?.time === s.time;
-                  return (
-                    <button
-                      key={s.time}
-                      type="button"
-                      onClick={() => onSelect(s)}
-                      className={`chip h-10 px-4 ${
-                        active ? "chip-solid" : "hover:border-ink hover:text-ink"
-                      } transition-colors`}
-                    >
-                      {s.time}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <SlotCalendar slots={slots} selected={slot} onSelect={onSelect} />
     </section>
   );
 }

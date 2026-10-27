@@ -3,15 +3,7 @@ import { notFound } from "next/navigation";
 import { getProviderBySlug, getServicesByProvider } from "@/lib/data";
 import { getAvailableSlots } from "@/lib/availability";
 import { fromPrice, euro, formatDuration } from "@/lib/pricing";
-import type { Slot } from "@/lib/types";
-
-function groupByDate(slots: Slot[]) {
-  const map = new Map<string, string[]>();
-  for (const s of slots) {
-    map.set(s.date, [...(map.get(s.date) ?? []), s.time]);
-  }
-  return [...map.entries()];
-}
+import { SlotCalendar } from "@/components/slot-calendar";
 
 export default async function ProviderPage({
   params,
@@ -23,7 +15,7 @@ export default async function ProviderPage({
   if (!provider) notFound();
 
   const svc = await getServicesByProvider(provider.id);
-  const slots = groupByDate(await getAvailableSlots(provider.id, { days: 14 }));
+  const slots = await getAvailableSlots(provider.id, { days: 14 });
 
   return (
     <main className="mx-auto max-w-[1200px] px-6 py-10">
@@ -97,33 +89,10 @@ export default async function ProviderPage({
             <p className="text-[0.875rem] text-muted mb-5">
               Eerstvolgende vrije momenten, live uit de agenda.
             </p>
-            <div className="flex flex-col gap-4">
-              {slots.map(([date, times]) => {
-                const d = new Date(date);
-                return (
-                  <div key={date}>
-                    <p className="text-[0.875rem] font-medium mb-2 capitalize">
-                      {d.toLocaleDateString("nl-NL", {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                      })}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {times.map((t) => (
-                        <Link
-                          key={t}
-                          href={`/boeken/${provider.slug}/${svc[0]?.id}`}
-                          className="chip hover:border-ink hover:text-ink transition-colors"
-                        >
-                          {t}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <SlotCalendar
+              slots={slots}
+              linkBase={`/boeken/${provider.slug}/${svc[0]?.id}`}
+            />
           </div>
         </aside>
       </div>
