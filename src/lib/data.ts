@@ -201,22 +201,36 @@ type AppointmentRow = {
   staff: string;
   starts_at: string;
   duration_min: number;
+  price_cents: number;
   status: AppointmentStatus;
+  intake: Record<string, string> | null;
 };
 
 export interface AgendaItem {
   id: string;
   dateISO: string; // YYYY-MM-DD in Europe/Amsterdam
+  dayLabel: string; // "woensdag 28 oktober"
   startMin: number; // minuten sinds middernacht (Amsterdam)
   durationMin: number;
   time: string; // "09:00"
   title: string;
-  animalName: string;
-  owner: string;
   status: AppointmentStatus;
+  priceCents: number;
+  // dier
+  animalName: string;
+  breed: string | null;
+  sizeClass: Animal["sizeClass"];
+  coatType: Animal["coatType"];
+  behavior: string[];
   biteRisk: number;
   muzzle: boolean;
+  medicalNote: string | null;
   topNote: string | null;
+  // boeker
+  owner: string;
+  email: string | null;
+  phone: string | null;
+  lastGroom: string | null;
 }
 
 /** Afspraken binnen een datumbereik, voor het weekoverzicht in het dashboard. */
@@ -245,19 +259,35 @@ export async function getAgendaItems(
     }).formatToParts(d);
     const hh = Number(parts.find((p) => p.type === "hour")?.value ?? "0") % 24;
     const mm = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+    const intake = r.intake ?? {};
     return {
       id: r.id,
       dateISO,
+      dayLabel: d.toLocaleDateString("nl-NL", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        timeZone: "Europe/Amsterdam",
+      }),
       startMin: hh * 60 + mm,
       durationMin: r.duration_min,
       time: `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`,
       title: r.service_name,
-      animalName: r.animal.name,
-      owner: r.owner_name,
       status: r.status,
+      priceCents: r.price_cents,
+      animalName: r.animal.name,
+      breed: r.animal.breed ?? null,
+      sizeClass: r.animal.sizeClass,
+      coatType: r.animal.coatType,
+      behavior: r.animal.behavior ?? [],
       biteRisk: r.animal.biteRisk ?? 0,
       muzzle: r.animal.muzzleRequired ?? false,
+      medicalNote: r.animal.medicalNote ?? null,
       topNote: r.animal.topNote ?? null,
+      owner: r.owner_name,
+      email: intake.email ?? null,
+      phone: intake.phone ?? null,
+      lastGroom: intake.lastGroom ?? null,
     };
   }) ?? [];
 }

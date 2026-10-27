@@ -80,7 +80,9 @@ export type AppointmentStatus =
   | "aanwezig"
   | "in_behandeling"
   | "klaar"
-  | "opgehaald";
+  | "opgehaald"
+  | "no_show"
+  | "geannuleerd";
 
 export interface Appointment {
   id: string;

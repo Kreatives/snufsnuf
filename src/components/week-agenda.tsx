@@ -1,4 +1,5 @@
 import type { AgendaItem } from "@/lib/data";
+import { AppointmentBlock } from "@/components/appointment-block";
 
 interface Day {
   iso: string;
@@ -69,27 +70,14 @@ export function WeekAgenda({
                   <div key={h} style={{ height: ROW_H }} className="border-b border-line" />
                 ))}
 
-                {dayItems.map((i) => {
-                  const top = ((i.startMin - startHour * 60) / 60) * ROW_H;
-                  const height = Math.max((i.durationMin / 60) * ROW_H - 2, 30);
-                  const alert = i.muzzle || i.biteRisk >= 2;
-                  return (
-                    <div
-                      key={i.id}
-                      style={{ top, height }}
-                      className="absolute left-1 right-1 rounded-md border border-line-strong bg-surface px-2 py-1 overflow-hidden"
-                    >
-                      <p className="text-[0.6875rem] text-muted leading-none">{i.time}</p>
-                      <p className="text-[0.8125rem] font-medium leading-tight truncate mt-0.5">
-                        {i.animalName}
-                      </p>
-                      <p className="text-[0.75rem] text-muted truncate">{i.title}</p>
-                      {alert && (
-                        <span className="chip chip-alert mt-1 h-5 text-[0.6875rem]">Muilkorf</span>
-                      )}
-                    </div>
-                  );
-                })}
+                {dayItems.map((i) => (
+                  <AppointmentBlock
+                    key={i.id}
+                    item={i}
+                    top={((i.startMin - startHour * 60) / 60) * ROW_H}
+                    height={Math.max((i.durationMin / 60) * ROW_H - 2, 30)}
+                  />
+                ))}
               </div>
             );
           })}
