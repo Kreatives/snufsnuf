@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import type { AgendaItem } from "@/lib/data";
 import { SIZE_LABELS, COAT_LABELS, euro, formatDuration } from "@/lib/pricing";
 import { setAppointmentStatusAction } from "@/lib/provider-actions";
+import {
+  cancelAppointmentAction,
+  deleteAppointmentAction,
+  rescheduleAppointmentAction,
+} from "@/lib/appointment-actions";
 import type { AppointmentStatus } from "@/lib/types";
-
-const FLOW: AppointmentStatus[] = ["verwacht", "aanwezig", "in_behandeling", "klaar", "opgehaald"];
+import type { ActionState } from "@/lib/auth-actions";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   aanvraag: "Aanvraag",
@@ -114,7 +117,7 @@ function AppointmentModal({ item, onClose }: { item: AgendaItem; onClose: () => 
             <p className="text-[0.9375rem] text-muted">{item.title || "Geblokkeerd in de agenda."}</p>
           ) : (
             <>
-          <StatusControls item={item} onDone={onClose} />
+          <ProviderActions item={item} onDone={onClose} />
 
           {item.topNote && (
             <p className="text-[0.9375rem] rounded-md border border-line-strong bg-bg px-3 py-2">
@@ -190,17 +193,20 @@ function AppointmentModal({ item, onClose }: { item: AgendaItem; onClose: () => 
   );
 }
 
-function StatusControls({ item, onDone }: { item: AgendaItem; onDone: () => void }) {
-  const btn = (status: AppointmentStatus, label: string, solid?: boolean) => (
+function ProviderActions({ item, onDone }: { item: AgendaItem; onDone: () => void }) {
+  const [moving, setMoving] = useState(false);
+  const [state, action, pending] = useActionState<ActionState, FormData>(
+    rescheduleAppointmentAction,
+    {},
+  );
+
+  const statusBtn = (status: AppointmentStatus, label: string, solid?: boolean) => (
     <form action={setAppointmentStatusAction} onSubmit={() => setTimeout(onDone, 50)}>
       <input type="hidden" name="id" value={item.id} />
       <input type="hidden" name="status" value={status} />
       <button
         type="submit"
-        disabled={item.status === status}
-        className={`chip ${
-          item.status === status || solid ? "chip-solid" : "hover:border-ink hover:text-ink"
-        }`}
+        className={`chip ${solid ? "chip-solid" : "hover:border-ink hover:text-ink"}`}
       >
         {label}
       </button>
@@ -208,18 +214,53 @@ function StatusControls({ item, onDone }: { item: AgendaItem; onDone: () => void
   );
 
   return (
-    <div className="border-t border-line pt-4">
-      <p className="text-eyebrow mb-2">Status</p>
-      {item.status === "aanvraag" ? (
+    <div className="border-t border-line pt-4 flex flex-col gap-3">
+      {item.status === "aanvraag" && (
         <div className="flex gap-2">
-          {btn("bevestigd", "Accepteren", true)}
-          {btn("geannuleerd", "Weigeren")}
+          {statusBtn("bevestigd", "Accepteren", true)}
+          {statusBtn("geannuleerd", "Weigeren")}
         </div>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {FLOW.map((s) => btn(s, STATUS_LABEL[s]))}
-          {btn("geannuleerd", "Annuleren")}
-        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {item.status !== "geannuleerd" && (
+          <button
+            type="button"
+            onClick={() => setMoving((m) => !m)}
+            className="btn btn-ghost h-9 px-4 text-[0.875rem]"
+          >
+            Verplaatsen
+          </button>
+        )}
+        {item.status !== "geannuleerd" && (
+          <form action={cancelAppointmentAction} onSubmit={() => setTimeout(onDone, 50)}>
+            <input type="hidden" name="id" value={item.id} />
+            <button type="submit" className="btn btn-ghost h-9 px-4 text-[0.875rem]">
+              Annuleren
+            </button>
+          </form>
+        )}
+        <form action={deleteAppointmentAction} onSubmit={() => setTimeout(onDone, 50)}>
+          <input type="hidden" name="id" value={item.id} />
+          <button type="submit" className="btn btn-ghost h-9 px-4 text-[0.875rem]">
+            Verwijderen
+          </button>
+        </form>
+      </div>
+
+      {moving && (
+        <form action={action} className="flex flex-col gap-2 rounded-md border border-line p-3">
+          <input type="hidden" name="id" value={item.id} />
+          <div className="flex gap-2">
+            <input name="date" type="date" className="field-input h-10" defaultValue={item.dateISO} required />
+            <input name="time" type="time" className="field-input h-10" defaultValue={item.time} required />
+            <button type="submit" className="btn btn-primary h-10 px-4" disabled={pending}>
+              {pending ? "…" : "Opslaan"}
+            </button>
+          </div>
+          {state.error && <p className="chip chip-alert w-fit">{state.error}</p>}
+          {state.success && <p className="chip w-fit">Verplaatst.</p>}
+        </form>
       )}
     </div>
   );

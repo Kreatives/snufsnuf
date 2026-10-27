@@ -578,7 +578,11 @@ export function BookingFlow({
                   <input
                     id="email"
                     type="email"
-                    className="field-input"
+                    className={`field-input ${
+                      !!defaultContact?.email && intake.email === defaultContact.email
+                        ? "text-muted"
+                        : ""
+                    }`}
                     value={intake.email}
                     onChange={(e) => setIntake((i) => ({ ...i, email: e.target.value }))}
                   />
@@ -589,12 +593,21 @@ export function BookingFlow({
                   </label>
                   <input
                     id="tel"
-                    className="field-input"
+                    className={`field-input ${
+                      !!defaultContact?.phone && intake.phone === defaultContact.phone
+                        ? "text-muted"
+                        : ""
+                    }`}
                     value={intake.phone}
                     onChange={(e) => setIntake((i) => ({ ...i, phone: e.target.value }))}
                   />
                 </div>
               </div>
+              {(defaultContact?.email || defaultContact?.phone) && (
+                <p className="text-[0.8125rem] text-muted">
+                  Automatisch ingevuld vanuit je account. Klik in een veld om het aan te passen.
+                </p>
+              )}
               <label className="flex items-start gap-3 text-[0.9375rem] cursor-pointer">
                 <input
                   type="checkbox"

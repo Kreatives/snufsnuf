@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getMyAppointments, type MyAppointment } from "@/lib/data";
 import { euro, formatDuration } from "@/lib/pricing";
+import { ConsumerAppointmentActions } from "@/components/appointment-actions-consumer";
 import type { AppointmentStatus } from "@/lib/types";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
@@ -18,28 +19,37 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
 };
 
 function Card({ a }: { a: MyAppointment }) {
+  const canManage = !a.isPast && a.status !== "geannuleerd";
   return (
-    <article className="card p-5 flex items-start justify-between gap-4">
-      <div>
-        <p className="font-medium">{a.serviceName}</p>
-        <p className="text-[0.875rem] text-muted mt-0.5 capitalize">
-          {a.dayLabel} · {a.time}
-          {!a.isStay && a.durationMin > 0 ? ` · ${formatDuration(a.durationMin)}` : ""}
-        </p>
-        <p className="text-[0.875rem] text-muted mt-0.5">
-          {a.animalName} ·{" "}
-          <Link
-            href={`/aanbieder/${a.providerSlug}`}
-            className="underline underline-offset-2 hover:text-ink"
-          >
-            {a.providerName}
-          </Link>
-        </p>
+    <article className="card p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-medium">{a.serviceName}</p>
+          <p className="text-[0.875rem] text-muted mt-0.5 capitalize">
+            {a.dayLabel} · {a.time}
+            {!a.isStay && a.durationMin > 0 ? ` · ${formatDuration(a.durationMin)}` : ""}
+          </p>
+          <p className="text-[0.875rem] text-muted mt-0.5">
+            {a.animalName} ·{" "}
+            <Link
+              href={`/aanbieder/${a.providerSlug}`}
+              className="underline underline-offset-2 hover:text-ink"
+            >
+              {a.providerName}
+            </Link>
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <span className="chip">{STATUS_LABEL[a.status]}</span>
+          <p className="text-[0.9375rem] font-medium mt-2">{euro(a.priceCents)}</p>
+        </div>
       </div>
-      <div className="text-right shrink-0">
-        <span className="chip">{STATUS_LABEL[a.status]}</span>
-        <p className="text-[0.9375rem] font-medium mt-2">{euro(a.priceCents)}</p>
-      </div>
+
+      {a.providerMoved && !a.isPast && (
+        <p className="chip chip-alert w-fit mt-3">Let op: deze afspraak is verplaatst door de salon</p>
+      )}
+
+      {canManage && <ConsumerAppointmentActions id={a.id} dateISO={a.dateISO} time24={a.time24} />}
     </article>
   );
 }

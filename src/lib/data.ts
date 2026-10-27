@@ -191,6 +191,9 @@ export interface MyAppointment {
   providerSlug: string;
   isPast: boolean;
   isStay: boolean;
+  providerMoved: boolean;
+  dateISO: string;
+  time24: string;
 }
 
 /** Afspraken van de ingelogde baasje, nieuw naar oud. */
@@ -217,10 +220,17 @@ export async function getMyAppointments(): Promise<MyAppointment[]> {
     status: AppointmentStatus;
     service_name: string;
     animal: { name: string };
+    provider_moved: boolean;
     providers: { name: string; slug: string } | null;
   };
   return ((data as Row[] | null) ?? []).map((r) => {
     const d = new Date(r.starts_at);
+    const time24 = d.toLocaleTimeString("nl-NL", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Amsterdam",
+      hour12: false,
+    });
     return {
       id: r.id,
       dayLabel: d.toLocaleDateString("nl-NL", {
@@ -229,6 +239,8 @@ export async function getMyAppointments(): Promise<MyAppointment[]> {
         month: "long",
         timeZone: "Europe/Amsterdam",
       }),
+      dateISO: d.toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" }),
+      time24,
       time: d.toLocaleTimeString("nl-NL", {
         hour: "2-digit",
         minute: "2-digit",
@@ -243,6 +255,7 @@ export async function getMyAppointments(): Promise<MyAppointment[]> {
       providerSlug: r.providers?.slug ?? "",
       isPast: Date.parse(r.starts_at) < now,
       isStay: !!r.ends_at,
+      providerMoved: r.provider_moved ?? false,
     };
   });
 }
