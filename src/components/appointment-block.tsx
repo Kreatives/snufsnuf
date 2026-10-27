@@ -4,7 +4,10 @@ import { useEffect } from "react";
 import { useState } from "react";
 import type { AgendaItem } from "@/lib/data";
 import { SIZE_LABELS, COAT_LABELS, euro, formatDuration } from "@/lib/pricing";
+import { setAppointmentStatusAction } from "@/lib/provider-actions";
 import type { AppointmentStatus } from "@/lib/types";
+
+const FLOW: AppointmentStatus[] = ["verwacht", "aanwezig", "in_behandeling", "klaar", "opgehaald"];
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   aanvraag: "Aanvraag",
@@ -42,10 +45,16 @@ export function AppointmentBlock({
         type="button"
         onClick={() => setOpen(true)}
         style={{ top, height }}
-        className="absolute left-1 right-1 text-left rounded-md border border-line-strong bg-surface px-2 py-1 overflow-hidden hover:border-ink transition-colors"
+        className={`absolute left-1 right-1 text-left rounded-md border px-2 py-1 overflow-hidden transition-colors hover:border-ink ${
+          item.isBlock ? "border-line bg-bg" : "border-line-strong bg-surface"
+        } ${item.status === "geannuleerd" ? "opacity-40 line-through" : ""}`}
       >
         <p className="text-[0.6875rem] text-muted leading-none">{item.time}</p>
-        <p className="text-[0.8125rem] font-medium leading-tight truncate mt-0.5">
+        <p
+          className={`text-[0.8125rem] leading-tight truncate mt-0.5 ${
+            item.isBlock ? "text-muted font-normal" : "font-medium"
+          }`}
+        >
           {item.animalName}
         </p>
         <p className="text-[0.75rem] text-muted truncate">{item.title}</p>
@@ -100,6 +109,12 @@ function AppointmentModal({ item, onClose }: { item: AgendaItem; onClose: () => 
             {item.muzzle && <span className="chip chip-alert">Muilkorf verplicht</span>}
             {item.biteRisk >= 2 && <span className="chip chip-alert">Bijtrisico hoog</span>}
           </div>
+
+          {item.isBlock ? (
+            <p className="text-[0.9375rem] text-muted">{item.title || "Geblokkeerd in de agenda."}</p>
+          ) : (
+            <>
+          <StatusControls item={item} onDone={onClose} />
 
           {item.topNote && (
             <p className="text-[0.9375rem] rounded-md border border-line-strong bg-bg px-3 py-2">
@@ -167,8 +182,45 @@ function AppointmentModal({ item, onClose }: { item: AgendaItem; onClose: () => 
               )}
             </div>
           )}
+            </>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function StatusControls({ item, onDone }: { item: AgendaItem; onDone: () => void }) {
+  const btn = (status: AppointmentStatus, label: string, solid?: boolean) => (
+    <form action={setAppointmentStatusAction} onSubmit={() => setTimeout(onDone, 50)}>
+      <input type="hidden" name="id" value={item.id} />
+      <input type="hidden" name="status" value={status} />
+      <button
+        type="submit"
+        disabled={item.status === status}
+        className={`chip ${
+          item.status === status || solid ? "chip-solid" : "hover:border-ink hover:text-ink"
+        }`}
+      >
+        {label}
+      </button>
+    </form>
+  );
+
+  return (
+    <div className="border-t border-line pt-4">
+      <p className="text-eyebrow mb-2">Status</p>
+      {item.status === "aanvraag" ? (
+        <div className="flex gap-2">
+          {btn("bevestigd", "Accepteren", true)}
+          {btn("geannuleerd", "Weigeren")}
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {FLOW.map((s) => btn(s, STATUS_LABEL[s]))}
+          {btn("geannuleerd", "Annuleren")}
+        </div>
+      )}
     </div>
   );
 }

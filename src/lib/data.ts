@@ -247,6 +247,18 @@ export async function getMyAppointments(): Promise<MyAppointment[]> {
   });
 }
 
+export async function getProviderExceptions(
+  providerId: string,
+): Promise<{ id: string; date: string; reason: string }[]> {
+  const supabase = await db();
+  const { data } = await supabase
+    .from("schedule_exceptions")
+    .select("id, date, reason")
+    .eq("provider_id", providerId)
+    .order("date", { ascending: true });
+  return (data as { id: string; date: string; reason: string }[] | null) ?? [];
+}
+
 /** De salon van de ingelogde aanbieder (eigenaar), ongeacht status. */
 export async function getOwnedProvider(): Promise<Provider | null> {
   const supabase = await db();
@@ -283,6 +295,7 @@ type AppointmentRow = {
   price_cents: number;
   status: AppointmentStatus;
   intake: Record<string, string> | null;
+  is_block: boolean;
 };
 
 export interface AgendaItem {
@@ -310,6 +323,7 @@ export interface AgendaItem {
   email: string | null;
   phone: string | null;
   lastGroom: string | null;
+  isBlock: boolean;
 }
 
 /** Afspraken binnen een datumbereik, voor het weekoverzicht in het dashboard. */
@@ -367,6 +381,7 @@ export async function getAgendaItems(
       email: intake.email ?? null,
       phone: intake.phone ?? null,
       lastGroom: intake.lastGroom ?? null,
+      isBlock: r.is_block ?? false,
     };
   }) ?? [];
 }

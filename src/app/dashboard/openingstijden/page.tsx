@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
-import { getOwnedProvider, getProviderHours } from "@/lib/data";
+import { getOwnedProvider, getProviderHours, getProviderExceptions } from "@/lib/data";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { HoursForm } from "@/components/hours-form";
+import { ExceptionsManager } from "@/components/exceptions-manager";
 
 export default async function OpeningstijdenPage() {
   const user = await getCurrentUser();
@@ -12,7 +13,10 @@ export default async function OpeningstijdenPage() {
   const provider = await getOwnedProvider();
   if (!provider) redirect("/dashboard/onboarding");
 
-  const hours = await getProviderHours(provider.id);
+  const [hours, exceptions] = await Promise.all([
+    getProviderHours(provider.id),
+    getProviderExceptions(provider.id),
+  ]);
 
   return (
     <main className="mx-auto max-w-[760px] px-6 py-10">
@@ -20,7 +24,10 @@ export default async function OpeningstijdenPage() {
         <h1 className="text-h2">Openingstijden</h1>
         <DashboardNav active="/dashboard/openingstijden" />
       </div>
-      <HoursForm existing={hours} />
+      <div className="flex flex-col gap-6">
+        <HoursForm existing={hours} />
+        <ExceptionsManager existing={exceptions} />
+      </div>
     </main>
   );
 }

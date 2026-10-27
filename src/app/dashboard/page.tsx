@@ -9,6 +9,7 @@ import {
 } from "@/lib/data";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { WeekAgenda } from "@/components/week-agenda";
+import { ManualEntryForm } from "@/components/manual-entry-form";
 
 const SHORT = ["ma", "di", "wo", "do", "vr", "za", "zo"];
 
@@ -119,6 +120,10 @@ export default async function DashboardPage({
           {items.length} {items.length === 1 ? "afspraak" : "afspraken"} deze week ·{" "}
           {services.length} diensten
         </p>
+      </div>
+
+      <div className="mb-4">
+        <ManualEntryForm />
       </div>
 
       <WeekAgenda days={days} items={items} startHour={startHour} endHour={endHour} />

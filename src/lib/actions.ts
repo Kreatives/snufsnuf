@@ -82,6 +82,19 @@ export async function createBooking(
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Eerste boeking bij deze salon wordt een aanvraag die goedkeuring vraagt (D-03).
+  let firstTime = false;
+  if (!input.isRequest && input.intake.email) {
+    const { data: prior } = await supabase
+      .from("appointments")
+      .select("id")
+      .eq("provider_id", input.providerId)
+      .eq("intake->>email", input.intake.email)
+      .limit(1);
+    firstTime = !prior || prior.length === 0;
+  }
+  const status = input.isRequest || firstTime ? "aanvraag" : "bevestigd";
+
   await supabase.from("holds").insert({
     provider_id: input.providerId,
     service_id: input.serviceId,
@@ -103,7 +116,7 @@ export async function createBooking(
       starts_at: startsAt,
       duration_min: input.durationMin,
       price_cents: input.priceCents,
-      status: input.isRequest ? "aanvraag" : "bevestigd",
+      status,
       intake: input.intake,
       idempotency_key: input.idempotencyKey,
     })

@@ -221,3 +221,104 @@ export async function deleteServiceAction(formData: FormData) {
     revalidatePath("/");
   }
 }
+
+/* ── Rooster-uitzonderingen (hele dagen dicht) ───────────────────────────── */
+function amsterdamOffset(dateISO: string): string {
+  const d = new Date(`${dateISO}T12:00:00Z`);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Amsterdam",
+    timeZoneName: "longOffset",
+  }).formatToParts(d);
+  const tz = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT+01:00";
+  const m = tz.match(/GMT([+-]\d{2}:\d{2})/);
+  return m ? m[1] : "+01:00";
+}
+
+export async function addExceptionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) redirect("/inloggen");
+
+  const date = String(formData.get("date") || "");
+  const reason = String(formData.get("reason") || "").trim();
+  if (!date) return { error: "Kies een datum." };
+
+  const { error } = await supabase
+    .from("schedule_exceptions")
+    .upsert({ provider_id: providerId, date, reason }, { onConflict: "provider_id,date" });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/openingstijden");
+  revalidatePath("/");
+  return { success: true };
+}
+
+export async function removeExceptionAction(formData: FormData) {
+  const supabase = await createClient(await cookies());
+  const id = String(formData.get("id") || "");
+  if (id) {
+    await supabase.from("schedule_exceptions").delete().eq("id", id);
+    revalidatePath("/dashboard/openingstijden");
+    revalidatePath("/");
+  }
+}
+
+/* ── Afspraakstatus wijzigen ─────────────────────────────────────────────── */
+export async function setAppointmentStatusAction(formData: FormData) {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) return;
+  const id = String(formData.get("id") || "");
+  const status = String(formData.get("status") || "");
+  if (!id || !status) return;
+  await supabase
+    .from("appointments")
+    .update({ status })
+    .eq("id", id)
+    .eq("provider_id", providerId);
+  revalidatePath("/dashboard");
+}
+
+/* ── Handmatige afspraak of blokkade toevoegen ───────────────────────────── */
+export async function addManualEntryAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) redirect("/inloggen");
+
+  const isBlock = formData.get("kind") === "blokkade";
+  const date = String(formData.get("date") || "");
+  const time = String(formData.get("time") || "");
+  const durationMin = numOf(formData.get("duration")) || 60;
+  const title = String(formData.get("title") || "").trim();
+  const owner = String(formData.get("owner") || "").trim();
+
+  if (!date || !time) return { error: "Vul datum en tijd in." };
+  if (!title) return { error: isBlock ? "Geef een reden op." : "Vul de naam van het dier in." };
+
+  const startsAt = `${date}T${time}:00${amsterdamOffset(date)}`;
+
+  const { error } = await supabase.from("appointments").insert({
+    provider_id: providerId,
+    service_id: null,
+    is_block: isBlock,
+    animal: { name: isBlock ? "Blokkade" : title },
+    owner_name: isBlock ? "" : owner,
+    service_name: isBlock ? title : String(formData.get("service") || "Afspraak"),
+    staff: "",
+    starts_at: startsAt,
+    duration_min: durationMin,
+    price_cents: 0,
+    status: "bevestigd",
+    intake: {},
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard");
+  return { success: true };
+}

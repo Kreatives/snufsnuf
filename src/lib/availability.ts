@@ -45,6 +45,12 @@ export async function getAvailableSlots(
     .eq("provider_id", providerId);
   if (!hoursRows || hoursRows.length === 0) return [];
 
+  const { data: exceptionRows } = await supabase
+    .from("schedule_exceptions")
+    .select("date")
+    .eq("provider_id", providerId);
+  const closedDates = new Set((exceptionRows as { date: string }[] | null)?.map((r) => r.date) ?? []);
+
   const hours = new Map<number, { open: number; close: number }>();
   for (const h of hoursRows as { weekday: number; open_time: string; close_time: string }[]) {
     const [oh, om] = h.open_time.split(":").map(Number);
@@ -78,6 +84,7 @@ export async function getAvailableSlots(
     if (!h) continue;
 
     const iso = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+    if (closedDates.has(iso)) continue;
     for (let t = h.open; t + durationMin <= h.close; t += stepMin) {
       const taken = (busy[iso] ?? []).some(([s, e]) => t < e && t + durationMin > s);
       if (taken) continue;
