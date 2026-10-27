@@ -23,6 +23,7 @@ interface Props {
   service: Service;
   slots: Slot[];
   savedAnimals: Animal[];
+  preselect?: { date: string; time: string } | null;
 }
 
 type DraftAnimal = {
@@ -37,7 +38,7 @@ type DraftAnimal = {
 
 type Species = "hond" | "kat";
 
-export function BookingFlow({ provider, service, slots, savedAnimals }: Props) {
+export function BookingFlow({ provider, service, slots, savedAnimals, preselect }: Props) {
   const [step, setStep] = useState(0);
   const [animalId, setAnimalId] = useState<string | "new" | null>(null);
   const [draft, setDraft] = useState<DraftAnimal>({
@@ -49,7 +50,9 @@ export function BookingFlow({ provider, service, slots, savedAnimals }: Props) {
     behavior: "sociaal",
     biteRisk: 0,
   });
-  const [slot, setSlot] = useState<Slot | null>(null);
+  const [slot, setSlot] = useState<Slot | null>(
+    () => slots.find((s) => s.date === preselect?.date && s.time === preselect?.time) ?? null,
+  );
   const [intake, setIntake] = useState({ email: "", phone: "", lastGroom: "", agree: false });
   const [, setPaid] = useState(false);
 

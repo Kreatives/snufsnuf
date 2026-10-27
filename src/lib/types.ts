@@ -12,7 +12,15 @@ export type ProviderCategory =
   | "mobiele_trimmer"
   | "dagopvang"
   | "pension"
-  | "uitlaatservice";
+  | "uitlaatservice"
+  | "oppas";
+
+export type PricingMode = "per_maat" | "per_dag";
+
+export interface Addon {
+  name: string;
+  priceCents: number;
+}
 
 export interface PricingRule {
   sizeClass: SizeClass;
@@ -39,6 +47,10 @@ export interface Service {
   requiredSkills: Skill[];
   bufferMin: number;
   indicative: boolean;
+  /** per_maat = trimmen (prijs uit maat+vacht), per_dag = oppas/verblijf (dagtarief) */
+  pricingMode: PricingMode;
+  dayPriceCents: number | null;
+  addons: Addon[];
 }
 
 export interface Provider {

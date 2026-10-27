@@ -11,6 +11,7 @@ const CATEGORY_LABEL: Record<Provider["category"], string> = {
   dagopvang: "Dagopvang",
   pension: "Pension",
   uitlaatservice: "Uitlaatservice",
+  oppas: "Oppas aan huis",
 };
 
 function freeLabel(slot: Slot | undefined): string {

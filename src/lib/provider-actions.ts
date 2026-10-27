@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ActionState } from "./auth-actions";
-import type { SizeClass } from "./types";
+import type { SizeClass, Addon } from "./types";
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0]; // ma..zo
 const SIZES: SizeClass[] = ["xs", "s", "m", "l", "xl"];
@@ -95,6 +95,55 @@ export async function addServiceAction(
     buffer_min: bufferMin,
     indicative,
     status: "published",
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/diensten");
+  revalidatePath("/");
+  return { success: true };
+}
+
+/* ── Oppas-pakket toevoegen (dagtarief + upsells) ────────────────────────── */
+export async function addPackageAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) redirect("/inloggen");
+
+  const name = String(formData.get("name") || "").trim();
+  const description = String(formData.get("description") || "").trim();
+  const species = String(formData.get("species") || "hond");
+  const dayEuros = Number(String(formData.get("day_price") || "").replace(",", "."));
+
+  if (!name) return { error: "Geef het pakket een naam." };
+  if (!(dayEuros > 0)) return { error: "Vul een dagtarief in." };
+
+  const addonNames = formData.getAll("addon_name").map(String);
+  const addonPrices = formData.getAll("addon_price").map(String);
+  const addons: Addon[] = [];
+  for (let i = 0; i < addonNames.length; i++) {
+    const n = addonNames[i].trim();
+    const p = Number(addonPrices[i].replace(",", "."));
+    if (n && p > 0) addons.push({ name: n, priceCents: Math.round(p * 100) });
+  }
+
+  const { error } = await supabase.from("services").insert({
+    provider_id: providerId,
+    species,
+    name,
+    description,
+    pricing: [],
+    coat_surcharge: {},
+    breed_exceptions: [],
+    required_skills: [],
+    buffer_min: 0,
+    indicative: false,
+    status: "published",
+    pricing_mode: "per_dag",
+    day_price_cents: Math.round(dayEuros * 100),
+    addons,
   });
   if (error) return { error: error.message };
 

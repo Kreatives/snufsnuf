@@ -63,6 +63,9 @@ type ServiceRow = {
   required_skills: Service["requiredSkills"];
   buffer_min: number;
   indicative: boolean;
+  pricing_mode: Service["pricingMode"];
+  day_price_cents: number | null;
+  addons: Service["addons"];
 };
 
 function mapService(r: ServiceRow): Service {
@@ -78,6 +81,9 @@ function mapService(r: ServiceRow): Service {
     requiredSkills: r.required_skills,
     bufferMin: r.buffer_min,
     indicative: r.indicative,
+    pricingMode: r.pricing_mode ?? "per_maat",
+    dayPriceCents: r.day_price_cents ?? null,
+    addons: r.addons ?? [],
   };
 }
 

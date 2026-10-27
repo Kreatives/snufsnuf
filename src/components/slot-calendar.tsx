@@ -78,7 +78,7 @@ export function SlotCalendar({
               return (
                 <Link
                   key={s.time}
-                  href={linkBase}
+                  href={`${linkBase}?date=${s.date}&time=${s.time}`}
                   className="chip h-10 px-4 hover:border-ink hover:text-ink transition-colors"
                 >
                   {s.time}

@@ -90,10 +90,12 @@ export function resolvePrice(
   };
 }
 
-/** Laagste "vanaf"-prijs over alle maatklassen, voor de aanbiederkaart (I-13) */
+/** Laagste "vanaf"-prijs, voor de aanbiederkaart (I-13) */
 export function fromPrice(service: Service): number {
+  if (service.pricingMode === "per_dag") return service.dayPriceCents ?? 0;
   const prices = service.pricing.map((p) => p.priceCents);
   const breedPrices = service.breedExceptions.map((b) => b.priceCents);
+  if (prices.length === 0 && breedPrices.length === 0) return 0;
   return Math.min(...prices, ...breedPrices);
 }
 

@@ -87,3 +87,65 @@ export async function createBooking(
   if (error) return { ok: false, error: error.message };
   return { ok: true, id: (data as { id: string }).id };
 }
+
+export interface StayInput {
+  providerId: string;
+  serviceId: string;
+  serviceName: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;
+  dropoff: string; // HH:mm
+  pickup: string;
+  nights: number;
+  priceCents: number;
+  addons: string[];
+  idempotencyKey: string;
+  owner: string;
+  animal: { name: string; species: string; behavior: string[]; biteRisk: number; muzzleRequired: boolean };
+  intake: Record<string, string>;
+}
+
+export async function createStayBooking(
+  input: StayInput,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const supabase = await createClient(await cookies());
+
+  const startsAt = `${input.startDate}T${input.dropoff}:00${amsterdamOffset(input.startDate)}`;
+  const endsAt = `${input.endDate}T${input.pickup}:00${amsterdamOffset(input.endDate)}`;
+
+  const { data: existing } = await supabase
+    .from("appointments")
+    .select("id")
+    .eq("idempotency_key", input.idempotencyKey)
+    .maybeSingle();
+  if (existing) return { ok: true, id: (existing as { id: string }).id };
+
+  const { data, error } = await supabase
+    .from("appointments")
+    .insert({
+      provider_id: input.providerId,
+      service_id: input.serviceId,
+      animal: input.animal,
+      owner_name: input.owner,
+      service_name: input.serviceName,
+      staff: "",
+      starts_at: startsAt,
+      ends_at: endsAt,
+      duration_min: input.nights * 24 * 60,
+      price_cents: input.priceCents,
+      status: "bevestigd",
+      intake: {
+        ...input.intake,
+        dropoff: input.dropoff,
+        pickup: input.pickup,
+        nights: String(input.nights),
+        addons: input.addons.join(", "),
+      },
+      idempotency_key: input.idempotencyKey,
+    })
+    .select("id")
+    .single();
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, id: (data as { id: string }).id };
+}
