@@ -56,7 +56,32 @@ export async function createBooking(
     .maybeSingle();
   if (existing) return { ok: true, id: (existing as { id: string }).id };
 
-  // Hold houdt het slot vast (TTL 10 min). Bij een dubbele sleutel negeren we de fout.
+  // Overlapcontrole: het slot mag niet botsen met een bestaande afspraak (geen dubbelboeking).
+  const startMs = Date.parse(startsAt);
+  const endMs = startMs + input.durationMin * 60000;
+  const windowStart = new Date(startMs - 24 * 60 * 60 * 1000).toISOString();
+  const { data: sameDay } = await supabase
+    .from("appointments")
+    .select("starts_at, duration_min, status")
+    .eq("provider_id", input.providerId)
+    .gte("starts_at", windowStart)
+    .lt("starts_at", new Date(endMs).toISOString());
+  const clash = (sameDay as { starts_at: string; duration_min: number; status: string }[] | null)?.some(
+    (a) => {
+      if (a.status === "geannuleerd" || a.status === "no_show") return false;
+      const aStart = Date.parse(a.starts_at);
+      const aEnd = aStart + a.duration_min * 60000;
+      return aStart < endMs && aEnd > startMs;
+    },
+  );
+  if (clash) {
+    return { ok: false, error: "Dit moment is net geboekt. Kies een ander tijdstip." };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   await supabase.from("holds").insert({
     provider_id: input.providerId,
     service_id: input.serviceId,
@@ -70,6 +95,7 @@ export async function createBooking(
     .insert({
       provider_id: input.providerId,
       service_id: input.serviceId,
+      owner_user_id: user?.id ?? null,
       animal: input.animal,
       owner_name: input.owner,
       service_name: input.serviceName,
@@ -120,11 +146,16 @@ export async function createStayBooking(
     .maybeSingle();
   if (existing) return { ok: true, id: (existing as { id: string }).id };
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data, error } = await supabase
     .from("appointments")
     .insert({
       provider_id: input.providerId,
       service_id: input.serviceId,
+      owner_user_id: user?.id ?? null,
       animal: input.animal,
       owner_name: input.owner,
       service_name: input.serviceName,

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getOwnedProvider, getServicesByProvider } from "@/lib/data";
@@ -42,12 +43,17 @@ export default async function DienstenPage() {
                     {s.perNight ? " /nacht" : ""} · {meta.join(" · ")}
                   </p>
                 </div>
-                <form action={deleteServiceAction}>
-                  <input type="hidden" name="id" value={s.id} />
-                  <button type="submit" className="btn btn-ghost h-9 px-4">
-                    Verwijderen
-                  </button>
-                </form>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link href={`/dashboard/diensten/${s.id}`} className="btn btn-ghost h-9 px-4">
+                    Bewerken
+                  </Link>
+                  <form action={deleteServiceAction}>
+                    <input type="hidden" name="id" value={s.id} />
+                    <button type="submit" className="btn btn-ghost h-9 px-4">
+                      Verwijderen
+                    </button>
+                  </form>
+                </div>
               </article>
             );
           })}

@@ -18,12 +18,23 @@ export async function SiteHeader() {
           </Link>
           {user ? (
             <>
-              <Link
-                href={user.role === "aanbieder" ? "/dashboard" : "/mijn-dieren"}
-                className="text-muted hover:text-ink transition-colors"
-              >
-                {user.role === "aanbieder" ? "Dashboard" : "Mijn dieren"}
-              </Link>
+              {user.role === "aanbieder" ? (
+                <Link href="/dashboard" className="text-muted hover:text-ink transition-colors">
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link href="/mijn-dieren" className="text-muted hover:text-ink transition-colors">
+                    Mijn dieren
+                  </Link>
+                  <Link
+                    href="/mijn-afspraken"
+                    className="text-muted hover:text-ink transition-colors"
+                  >
+                    Afspraken
+                  </Link>
+                </>
+              )}
               <form action={logoutAction}>
                 <button type="submit" className="btn btn-ghost h-9 px-4">
                   Uitloggen

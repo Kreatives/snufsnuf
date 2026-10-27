@@ -178,6 +178,75 @@ export async function getProviderHours(
   return (data as { weekday: number; open_time: string; close_time: string }[] | null) ?? [];
 }
 
+export interface MyAppointment {
+  id: string;
+  dayLabel: string;
+  time: string;
+  durationMin: number;
+  priceCents: number;
+  status: AppointmentStatus;
+  serviceName: string;
+  animalName: string;
+  providerName: string;
+  providerSlug: string;
+  isPast: boolean;
+  isStay: boolean;
+}
+
+/** Afspraken van de ingelogde baasje, nieuw naar oud. */
+export async function getMyAppointments(): Promise<MyAppointment[]> {
+  const supabase = await db();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from("appointments")
+    .select("*, providers(name, slug)")
+    .eq("owner_user_id", user.id)
+    .order("starts_at", { ascending: false });
+
+  const now = Date.now();
+  type Row = {
+    id: string;
+    starts_at: string;
+    ends_at: string | null;
+    duration_min: number;
+    price_cents: number;
+    status: AppointmentStatus;
+    service_name: string;
+    animal: { name: string };
+    providers: { name: string; slug: string } | null;
+  };
+  return ((data as Row[] | null) ?? []).map((r) => {
+    const d = new Date(r.starts_at);
+    return {
+      id: r.id,
+      dayLabel: d.toLocaleDateString("nl-NL", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        timeZone: "Europe/Amsterdam",
+      }),
+      time: d.toLocaleTimeString("nl-NL", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Europe/Amsterdam",
+      }),
+      durationMin: r.duration_min,
+      priceCents: r.price_cents,
+      status: r.status,
+      serviceName: r.service_name,
+      animalName: r.animal?.name ?? "",
+      providerName: r.providers?.name ?? "",
+      providerSlug: r.providers?.slug ?? "",
+      isPast: Date.parse(r.starts_at) < now,
+      isStay: !!r.ends_at,
+    };
+  });
+}
+
 /** De salon van de ingelogde aanbieder (eigenaar), ongeacht status. */
 export async function getOwnedProvider(): Promise<Provider | null> {
   const supabase = await db();

@@ -1,23 +1,83 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createServiceAction } from "@/lib/provider-actions";
+import { createServiceAction, updateServiceAction } from "@/lib/provider-actions";
 import type { ActionState } from "@/lib/auth-actions";
 import { SIZE_LABELS, COAT_LABELS } from "@/lib/pricing";
-import type { SizeClass, CoatType } from "@/lib/types";
+import type { SizeClass, CoatType, Service } from "@/lib/types";
 
 const SIZES: SizeClass[] = ["xs", "s", "m", "l", "xl"];
 const COATS: CoatType[] = ["glad", "lang", "krul", "ruw", "dubbel"];
-const ROWS = [0, 1, 2];
+const eur = (cents: number) => (cents / 100).toString();
 
-export function ServiceEditor() {
-  const [state, action, pending] = useActionState<ActionState, FormData>(createServiceAction, {});
-  const [perNight, setPerNight] = useState(false);
-  const [rules, setRules] = useState({ size: false, coat: false, weight: false });
+interface VariantRow {
+  name: string;
+  price: string;
+  dur: string;
+}
+interface AddonRow {
+  name: string;
+  price: string;
+  dur: string;
+  perUnit: boolean;
+}
+interface WeightRow {
+  value: string;
+  price: string;
+  dur: string;
+}
+
+export function ServiceEditor({ initial }: { initial?: Service }) {
+  const action = initial ? updateServiceAction : createServiceAction;
+  const [state, formAction, pending] = useActionState<ActionState, FormData>(action, {});
+
+  const [perNight, setPerNight] = useState(initial?.perNight ?? false);
+  const [hasVariants, setHasVariants] = useState((initial?.variants.length ?? 0) > 0);
+  const [hasAddons, setHasAddons] = useState((initial?.addons.length ?? 0) > 0);
+
+  const [variants, setVariants] = useState<VariantRow[]>(
+    initial?.variants.length
+      ? initial.variants.map((v) => ({ name: v.name, price: eur(v.priceCents), dur: String(v.durationMin) }))
+      : [{ name: "", price: "", dur: "" }],
+  );
+  const [addons, setAddons] = useState<AddonRow[]>(
+    initial?.addons.length
+      ? initial.addons.map((a) => ({
+          name: a.name,
+          price: eur(a.priceCents),
+          dur: String(a.durationMin),
+          perUnit: a.isPerUnit,
+        }))
+      : [{ name: "", price: "", dur: "", perUnit: false }],
+  );
+
+  const sizeRule = initial?.priceRules.find((r) => r.attribute === "size");
+  const coatRule = initial?.priceRules.find((r) => r.attribute === "coat");
+  const weightRule = initial?.priceRules.find((r) => r.attribute === "weight");
+  const [rules, setRules] = useState({
+    size: !!sizeRule?.enabled,
+    coat: !!coatRule?.enabled,
+    weight: !!weightRule?.enabled,
+  });
+  const [weightRows, setWeightRows] = useState<WeightRow[]>(
+    weightRule?.rows.length
+      ? weightRule.rows.map((r) => ({ value: r.value, price: eur(r.deltaPriceCents), dur: String(r.deltaDurationMin) }))
+      : [{ value: "", price: "", dur: "" }],
+  );
+
+  const ruleRow = (rule: typeof sizeRule, key: string, field: "price" | "dur") => {
+    const row = rule?.rows.find((r) => r.value === key);
+    if (!row) return undefined;
+    return field === "price" ? eur(row.deltaPriceCents) : String(row.deltaDurationMin);
+  };
 
   return (
-    <form action={action} className="card p-6 flex flex-col gap-6">
-      <h2 className="text-h3">Nieuwe dienst</h2>
+    <form action={formAction} className="card p-6 flex flex-col gap-6">
+      <h2 className="text-h3">{initial ? "Dienst bewerken" : "Nieuwe dienst"}</h2>
+      {initial && <input type="hidden" name="service_id" value={initial.id} />}
+      <input type="hidden" name="variant_count" value={hasVariants ? variants.length : 0} />
+      <input type="hidden" name="addon_count" value={hasAddons ? addons.length : 0} />
+      <input type="hidden" name="weight_count" value={rules.weight ? weightRows.length : 0} />
 
       {/* Basis */}
       <div className="flex flex-col gap-4">
@@ -27,13 +87,13 @@ export function ServiceEditor() {
             <label className="field-label" htmlFor="name">
               Naam
             </label>
-            <input id="name" name="name" className="field-input" required />
+            <input id="name" name="name" className="field-input" defaultValue={initial?.name} required />
           </div>
           <div>
             <label className="field-label" htmlFor="species">
               Soort
             </label>
-            <select id="species" name="species" className="field-input" defaultValue="hond">
+            <select id="species" name="species" className="field-input" defaultValue={initial?.species ?? "hond"}>
               <option value="hond">Hond</option>
               <option value="kat">Kat</option>
             </select>
@@ -47,18 +107,20 @@ export function ServiceEditor() {
             id="description"
             name="description"
             className="field-input h-20 py-2 resize-none"
+            defaultValue={initial?.description}
           />
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="base_price">
-              Basisprijs (€)
+              {perNight ? "Prijs per nacht (€)" : "Vanaf-prijs (€)"}
             </label>
             <input
               id="base_price"
               name="base_price"
               className="field-input"
               inputMode="decimal"
+              defaultValue={initial ? eur(initial.basePriceCents) : ""}
               required
             />
           </div>
@@ -71,15 +133,23 @@ export function ServiceEditor() {
               name="base_duration"
               className="field-input"
               inputMode="numeric"
-              defaultValue={60}
-              required
+              defaultValue={initial?.baseDurationMin ?? 60}
             />
           </div>
         </div>
+        <p className="text-[0.8125rem] text-muted">
+          De vanaf-prijs is wat de klant minimaal betaalt. Voeg je varianten toe, dan kiest de
+          klant een variant die deze prijs en duur vervangt.
+        </p>
         <div className="flex flex-wrap gap-5">
           <label className="flex items-center gap-2 text-[0.9375rem] cursor-pointer">
-            <input type="checkbox" name="is_from_price" className="size-4 accent-ink" /> Vanaf-prijs
-            tonen
+            <input
+              type="checkbox"
+              name="is_from_price"
+              className="size-4 accent-ink"
+              defaultChecked={initial?.isFromPrice}
+            />
+            Als vanaf-prijs tonen
           </label>
           <label className="flex items-center gap-2 text-[0.9375rem] cursor-pointer">
             <input
@@ -98,7 +168,7 @@ export function ServiceEditor() {
                 name="min_nights"
                 className="field-input h-9 w-16"
                 inputMode="numeric"
-                defaultValue={1}
+                defaultValue={initial?.minNights ?? 1}
               />
             </label>
           )}
@@ -107,60 +177,128 @@ export function ServiceEditor() {
 
       {/* Varianten */}
       <div className="flex flex-col gap-3 border-t border-line pt-5">
-        <p className="text-eyebrow">Varianten (optioneel)</p>
-        <p className="text-[0.8125rem] text-muted">
-          Een gekozen variant vervangt de basisprijs en -duur.
-        </p>
-        {ROWS.map((i) => (
-          <div key={i} className="grid grid-cols-[1fr_7rem_7rem] gap-3">
-            <input name={`variant_name_${i}`} className="field-input h-10" placeholder="Naam" />
-            <input
-              name={`variant_price_${i}`}
-              className="field-input h-10"
-              inputMode="decimal"
-              placeholder="Prijs (€)"
-            />
-            <input
-              name={`variant_dur_${i}`}
-              className="field-input h-10"
-              inputMode="numeric"
-              placeholder="Duur (min)"
+        <label className="flex items-center gap-2.5 text-[0.9375rem] cursor-pointer font-medium">
+          <input
+            type="checkbox"
+            className="size-4 accent-ink"
+            checked={hasVariants}
+            onChange={(e) => setHasVariants(e.target.checked)}
+          />
+          Deze dienst heeft meerdere varianten
+        </label>
+        {hasVariants && (
+          <div className="flex flex-col gap-2">
+            <p className="text-[0.8125rem] text-muted">Een gekozen variant vervangt de basisprijs en -duur.</p>
+            {variants.map((v, i) => (
+              <div key={i} className="grid grid-cols-[1fr_6rem_6rem_auto] gap-3 items-center">
+                <input
+                  className="field-input h-10"
+                  placeholder="Naam (bijv. 30 cm)"
+                  name={`variant_name_${i}`}
+                  value={v.name}
+                  onChange={(e) =>
+                    setVariants((rows) => rows.map((r, j) => (j === i ? { ...r, name: e.target.value } : r)))
+                  }
+                />
+                <input
+                  className="field-input h-10"
+                  placeholder="€"
+                  name={`variant_price_${i}`}
+                  value={v.price}
+                  onChange={(e) =>
+                    setVariants((rows) => rows.map((r, j) => (j === i ? { ...r, price: e.target.value } : r)))
+                  }
+                />
+                <input
+                  className="field-input h-10"
+                  placeholder="min"
+                  name={`variant_dur_${i}`}
+                  value={v.dur}
+                  onChange={(e) =>
+                    setVariants((rows) => rows.map((r, j) => (j === i ? { ...r, dur: e.target.value } : r)))
+                  }
+                />
+                <RemoveBtn onClick={() => setVariants((r) => r.filter((_, j) => j !== i))} />
+              </div>
+            ))}
+            <AddBtn
+              label="Variant toevoegen"
+              onClick={() => setVariants((r) => [...r, { name: "", price: "", dur: "" }])}
             />
           </div>
-        ))}
+        )}
       </div>
 
       {/* Extra's */}
       <div className="flex flex-col gap-3 border-t border-line pt-5">
-        <p className="text-eyebrow">Extra&apos;s (optioneel)</p>
-        {ROWS.map((i) => (
-          <div key={i} className="grid grid-cols-[1fr_6rem_6rem_auto] gap-3 items-center">
-            <input name={`addon_name_${i}`} className="field-input h-10" placeholder="Naam" />
-            <input
-              name={`addon_price_${i}`}
-              className="field-input h-10"
-              inputMode="decimal"
-              placeholder="€"
+        <label className="flex items-center gap-2.5 text-[0.9375rem] cursor-pointer font-medium">
+          <input
+            type="checkbox"
+            className="size-4 accent-ink"
+            checked={hasAddons}
+            onChange={(e) => setHasAddons(e.target.checked)}
+          />
+          Deze dienst heeft extra&apos;s
+        </label>
+        {hasAddons && (
+          <div className="flex flex-col gap-2">
+            {addons.map((a, i) => (
+              <div key={i} className="grid grid-cols-[1fr_5rem_5rem_auto_auto] gap-3 items-center">
+                <input
+                  className="field-input h-10"
+                  placeholder="Naam"
+                  name={`addon_name_${i}`}
+                  value={a.name}
+                  onChange={(e) =>
+                    setAddons((rows) => rows.map((r, j) => (j === i ? { ...r, name: e.target.value } : r)))
+                  }
+                />
+                <input
+                  className="field-input h-10"
+                  placeholder="€"
+                  name={`addon_price_${i}`}
+                  value={a.price}
+                  onChange={(e) =>
+                    setAddons((rows) => rows.map((r, j) => (j === i ? { ...r, price: e.target.value } : r)))
+                  }
+                />
+                <input
+                  className="field-input h-10"
+                  placeholder="min"
+                  name={`addon_dur_${i}`}
+                  value={a.dur}
+                  onChange={(e) =>
+                    setAddons((rows) => rows.map((r, j) => (j === i ? { ...r, dur: e.target.value } : r)))
+                  }
+                />
+                <label className="flex items-center gap-1.5 text-[0.8125rem] whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    name={`addon_perunit_${i}`}
+                    className="size-4 accent-ink"
+                    checked={a.perUnit}
+                    onChange={(e) =>
+                      setAddons((rows) => rows.map((r, j) => (j === i ? { ...r, perUnit: e.target.checked } : r)))
+                    }
+                  />
+                  per stuk
+                </label>
+                <RemoveBtn onClick={() => setAddons((r) => r.filter((_, j) => j !== i))} />
+              </div>
+            ))}
+            <AddBtn
+              label="Extra toevoegen"
+              onClick={() => setAddons((r) => [...r, { name: "", price: "", dur: "", perUnit: false }])}
             />
-            <input
-              name={`addon_dur_${i}`}
-              className="field-input h-10"
-              inputMode="numeric"
-              placeholder="min"
-            />
-            <label className="flex items-center gap-2 text-[0.8125rem] whitespace-nowrap">
-              <input type="checkbox" name={`addon_perunit_${i}`} className="size-4 accent-ink" />
-              per stuk
-            </label>
           </div>
-        ))}
+        )}
       </div>
 
       {/* Prijsregels */}
       <div className="flex flex-col gap-3 border-t border-line pt-5">
         <p className="text-eyebrow">Prijsregels (optioneel)</p>
         <p className="text-[0.8125rem] text-muted">
-          Pas de basisprijs aan op de kenmerken van het dier. Vul +/- euro en +/- minuten in.
+          Pas de prijs aan op kenmerken van het dier. Vul +/- euro en +/- minuten in.
         </p>
 
         <RuleToggle
@@ -173,6 +311,7 @@ export function ServiceEditor() {
           <DeltaTable
             values={SIZES.map((s) => ({ key: s, label: SIZE_LABELS[s] }))}
             prefix="size"
+            defaults={(k, f) => ruleRow(sizeRule, k, f)}
           />
         )}
 
@@ -186,6 +325,7 @@ export function ServiceEditor() {
           <DeltaTable
             values={COATS.map((c) => ({ key: c, label: COAT_LABELS[c] }))}
             prefix="coat"
+            defaults={(k, f) => ruleRow(coatRule, k, f)}
           />
         )}
 
@@ -197,28 +337,74 @@ export function ServiceEditor() {
         />
         {rules.weight && (
           <div className="flex flex-col gap-2 pl-1">
-            {ROWS.map((i) => (
-              <div key={i} className="grid grid-cols-[1fr_6rem_6rem] gap-3">
+            {weightRows.map((w, i) => (
+              <div key={i} className="grid grid-cols-[1fr_5rem_5rem_auto] gap-3 items-center">
                 <input
-                  name={`weight_val_${i}`}
                   className="field-input h-10"
                   placeholder="Bucket (bijv. >20)"
+                  name={`weight_val_${i}`}
+                  value={w.value}
+                  onChange={(e) =>
+                    setWeightRows((rows) => rows.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))
+                  }
                 />
-                <input name={`weight_price_${i}`} className="field-input h-10" placeholder="± €" />
-                <input name={`weight_dur_${i}`} className="field-input h-10" placeholder="± min" />
+                <input
+                  className="field-input h-10"
+                  placeholder="± €"
+                  name={`weight_price_${i}`}
+                  value={w.price}
+                  onChange={(e) =>
+                    setWeightRows((rows) => rows.map((r, j) => (j === i ? { ...r, price: e.target.value } : r)))
+                  }
+                />
+                <input
+                  className="field-input h-10"
+                  placeholder="± min"
+                  name={`weight_dur_${i}`}
+                  value={w.dur}
+                  onChange={(e) =>
+                    setWeightRows((rows) => rows.map((r, j) => (j === i ? { ...r, dur: e.target.value } : r)))
+                  }
+                />
+                <RemoveBtn onClick={() => setWeightRows((r) => r.filter((_, j) => j !== i))} />
               </div>
             ))}
+            <AddBtn
+              label="Gewichtsregel toevoegen"
+              onClick={() => setWeightRows((r) => [...r, { value: "", price: "", dur: "" }])}
+            />
           </div>
         )}
       </div>
 
       {state.error && <p className="chip chip-alert w-fit">{state.error}</p>}
-      {state.success && <p className="chip w-fit">Dienst toegevoegd.</p>}
+      {state.success && <p className="chip w-fit">{initial ? "Opgeslagen." : "Dienst toegevoegd."}</p>}
 
       <button type="submit" className="btn btn-primary w-fit" disabled={pending}>
-        {pending ? "Bezig…" : "Dienst opslaan"}
+        {pending ? "Bezig…" : initial ? "Wijzigingen opslaan" : "Dienst opslaan"}
       </button>
     </form>
+  );
+}
+
+function AddBtn({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="btn btn-ghost h-9 w-fit px-4 text-[0.875rem]">
+      + {label}
+    </button>
+  );
+}
+
+function RemoveBtn({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="btn btn-ghost h-10 w-10 px-0 shrink-0"
+      aria-label="Rij verwijderen"
+    >
+      ✕
+    </button>
   );
 }
 
@@ -250,9 +436,11 @@ function RuleToggle({
 function DeltaTable({
   values,
   prefix,
+  defaults,
 }: {
   values: { key: string; label: string }[];
   prefix: string;
+  defaults?: (key: string, field: "price" | "dur") => string | undefined;
 }) {
   return (
     <div className="flex flex-col gap-2 pl-1">
@@ -264,12 +452,14 @@ function DeltaTable({
             className="field-input h-10"
             inputMode="decimal"
             placeholder="± €"
+            defaultValue={defaults?.(v.key, "price")}
           />
           <input
             name={`${prefix}_dur_${v.key}`}
             className="field-input h-10"
             inputMode="numeric"
             placeholder="± min"
+            defaultValue={defaults?.(v.key, "dur")}
           />
         </div>
       ))}

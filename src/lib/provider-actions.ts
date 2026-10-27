@@ -11,7 +11,6 @@ import type { SizeClass, CoatType, Variant, Addon, PriceRule } from "./types";
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0]; // ma..zo
 const SIZES: SizeClass[] = ["xs", "s", "m", "l", "xl"];
 const COATS: CoatType[] = ["glad", "lang", "krul", "ruw", "dubbel"];
-const ROWS = [0, 1, 2];
 
 const centsOf = (v: FormDataEntryValue | null): number => {
   const n = Number(String(v ?? "").replace(",", ".").replace(/[^\d.-]/g, ""));
@@ -66,15 +65,22 @@ export async function saveHoursAction(
   return { success: true };
 }
 
-/* ── Dienst aanmaken (flexibel model: basis + varianten + extra's + prijsregels) ── */
-export async function createServiceAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const supabase = await createClient(await cookies());
-  const providerId = await ownerProviderId(supabase);
-  if (!providerId) redirect("/inloggen");
+/* ── Dienst-formulier parsen (gedeeld door aanmaken en bewerken) ─────────── */
+interface ServicePayload {
+  species: string;
+  name: string;
+  description: string;
+  base_price_cents: number;
+  base_duration_min: number;
+  is_from_price: boolean;
+  variants: Variant[];
+  addons: Addon[];
+  price_rules: PriceRule[];
+  per_night: boolean;
+  min_nights: number;
+}
 
+function parseServiceForm(formData: FormData): { error?: string; payload?: ServicePayload } {
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
   const species = String(formData.get("species") || "hond");
@@ -88,14 +94,8 @@ export async function createServiceAction(
   if (!(basePriceCents > 0)) return { error: "Vul een basisprijs in." };
   if (!perNight && !(baseDurationMin > 0)) return { error: "Vul een basisduur in." };
 
-  const { data: prov } = await supabase
-    .from("providers")
-    .select("category")
-    .eq("id", providerId)
-    .maybeSingle();
-
   const variants: Variant[] = [];
-  for (const i of ROWS) {
+  for (let i = 0; i < numOf(formData.get("variant_count")); i++) {
     const vName = String(formData.get(`variant_name_${i}`) || "").trim();
     const price = centsOf(formData.get(`variant_price_${i}`));
     if (vName && price > 0) {
@@ -109,7 +109,7 @@ export async function createServiceAction(
   }
 
   const addons: Addon[] = [];
-  for (const i of ROWS) {
+  for (let i = 0; i < numOf(formData.get("addon_count")); i++) {
     const aName = String(formData.get(`addon_name_${i}`) || "").trim();
     const price = centsOf(formData.get(`addon_price_${i}`));
     if (aName && price !== 0) {
@@ -149,7 +149,7 @@ export async function createServiceAction(
     });
   }
   if (formData.get("rule_weight") === "on") {
-    const rows = ROWS.map((i) => ({
+    const rows = Array.from({ length: numOf(formData.get("weight_count")) }, (_, i) => ({
       value: String(formData.get(`weight_val_${i}`) || "").trim(),
       deltaPriceCents: centsOf(formData.get(`weight_price_${i}`)),
       deltaDurationMin: numOf(formData.get(`weight_dur_${i}`)),
@@ -158,27 +158,81 @@ export async function createServiceAction(
       priceRules.push({ id: uid(), attribute: "weight", enabled: true, rows });
   }
 
+  return {
+    payload: {
+      species,
+      name,
+      description,
+      base_price_cents: basePriceCents,
+      base_duration_min: baseDurationMin,
+      is_from_price: isFromPrice,
+      variants,
+      addons,
+      price_rules: priceRules,
+      per_night: perNight,
+      min_nights: minNights,
+    },
+  };
+}
+
+/* ── Dienst aanmaken ─────────────────────────────────────────────────────── */
+export async function createServiceAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) redirect("/inloggen");
+
+  const parsed = parseServiceForm(formData);
+  if (parsed.error || !parsed.payload) return { error: parsed.error };
+
+  const { data: prov } = await supabase
+    .from("providers")
+    .select("category")
+    .eq("id", providerId)
+    .maybeSingle();
+
   const { error } = await supabase.from("services").insert({
     provider_id: providerId,
-    species,
-    name,
     category: (prov as { category?: string } | null)?.category ?? "",
-    description,
-    base_price_cents: basePriceCents,
-    base_duration_min: baseDurationMin,
-    is_from_price: isFromPrice,
-    variants,
-    addons,
-    price_rules: priceRules,
-    per_night: perNight,
-    min_nights: minNights,
     required_skills: [],
     buffer_min: 15,
     status: "published",
+    ...parsed.payload,
   });
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard/diensten");
+  revalidatePath("/");
+  return { success: true };
+}
+
+/* ── Dienst bewerken ─────────────────────────────────────────────────────── */
+export async function updateServiceAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) redirect("/inloggen");
+
+  const serviceId = String(formData.get("service_id") || "");
+  if (!serviceId) return { error: "Onbekende dienst." };
+
+  const parsed = parseServiceForm(formData);
+  if (parsed.error || !parsed.payload) return { error: parsed.error };
+
+  // RLS beperkt dit al tot eigen diensten; provider-filter als extra zekerheid.
+  const { error } = await supabase
+    .from("services")
+    .update(parsed.payload)
+    .eq("id", serviceId)
+    .eq("provider_id", providerId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/diensten");
+  revalidatePath(`/dashboard/diensten/${serviceId}`);
   revalidatePath("/");
   return { success: true };
 }
