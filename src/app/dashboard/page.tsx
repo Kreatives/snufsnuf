@@ -81,7 +81,12 @@ export default async function DashboardPage({
     <main className="mx-auto max-w-[1200px] px-6 py-10">
       <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
         <div>
-          <p className="text-eyebrow">{provider.name} · agenda</p>
+          <Link
+            href={`/aanbieder/${provider.slug}`}
+            className="text-eyebrow hover:text-ink transition-colors"
+          >
+            {provider.name} · bekijk salon ↗
+          </Link>
           <h1 className="text-h2">Weekoverzicht</h1>
         </div>
         <DashboardNav active="/dashboard" />

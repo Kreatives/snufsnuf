@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProviderBySlug, getServiceById, getSavedAnimals } from "@/lib/data";
+import { getCurrentUser } from "@/lib/session";
 import { getAvailableSlots } from "@/lib/availability";
 import { BookingFlow } from "@/components/booking-flow";
 
@@ -17,6 +18,12 @@ export default async function BookingPage({
   if (!provider || !service || service.providerId !== provider.id) notFound();
 
   const savedAnimals = await getSavedAnimals();
+  const me = await getCurrentUser();
+  const defaultContact = {
+    email: me?.email ?? "",
+    phone: me?.phone ?? "",
+    name: me?.name ?? "",
+  };
   const slots = service.perNight
     ? []
     : await getAvailableSlots(provider.id, { days: 14, durationMin: service.baseDurationMin || 30 });
@@ -38,6 +45,7 @@ export default async function BookingPage({
         slots={slots}
         savedAnimals={savedAnimals}
         preselect={preselect}
+        defaultContact={defaultContact}
       />
     </main>
   );

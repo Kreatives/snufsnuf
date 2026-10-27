@@ -6,11 +6,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ActionState } from "./auth-actions";
-import type { SizeClass, CoatType, Variant, Addon, PriceRule } from "./types";
+import type { Variant, Addon } from "./types";
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0]; // ma..zo
-const SIZES: SizeClass[] = ["xs", "s", "m", "l", "xl"];
-const COATS: CoatType[] = ["glad", "lang", "krul", "ruw", "dubbel"];
 
 const centsOf = (v: FormDataEntryValue | null): number => {
   const n = Number(String(v ?? "").replace(",", ".").replace(/[^\d.-]/g, ""));
@@ -75,7 +73,6 @@ interface ServicePayload {
   is_from_price: boolean;
   variants: Variant[];
   addons: Addon[];
-  price_rules: PriceRule[];
   per_night: boolean;
   min_nights: number;
 }
@@ -84,15 +81,11 @@ function parseServiceForm(formData: FormData): { error?: string; payload?: Servi
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
   const species = String(formData.get("species") || "hond");
-  const basePriceCents = centsOf(formData.get("base_price"));
   const perNight = formData.get("per_night") === "on";
-  const baseDurationMin = perNight ? 0 : numOf(formData.get("base_duration"));
   const isFromPrice = formData.get("is_from_price") === "on";
   const minNights = Math.max(1, numOf(formData.get("min_nights")) || 1);
 
   if (!name) return { error: "Geef de dienst een naam." };
-  if (!(basePriceCents > 0)) return { error: "Vul een basisprijs in." };
-  if (!perNight && !(baseDurationMin > 0)) return { error: "Vul een basisduur in." };
 
   const variants: Variant[] = [];
   for (let i = 0; i < numOf(formData.get("variant_count")); i++) {
@@ -123,39 +116,20 @@ function parseServiceForm(formData: FormData): { error?: string; payload?: Servi
     }
   }
 
-  const priceRules: PriceRule[] = [];
-  if (formData.get("rule_size") === "on") {
-    priceRules.push({
-      id: uid(),
-      attribute: "size",
-      enabled: true,
-      rows: SIZES.map((s) => ({
-        value: s,
-        deltaPriceCents: centsOf(formData.get(`size_price_${s}`)),
-        deltaDurationMin: numOf(formData.get(`size_dur_${s}`)),
-      })),
-    });
-  }
-  if (formData.get("rule_coat") === "on") {
-    priceRules.push({
-      id: uid(),
-      attribute: "coat",
-      enabled: true,
-      rows: COATS.map((c) => ({
-        value: c,
-        deltaPriceCents: centsOf(formData.get(`coat_price_${c}`)),
-        deltaDurationMin: numOf(formData.get(`coat_dur_${c}`)),
-      })),
-    });
-  }
-  if (formData.get("rule_weight") === "on") {
-    const rows = Array.from({ length: numOf(formData.get("weight_count")) }, (_, i) => ({
-      value: String(formData.get(`weight_val_${i}`) || "").trim(),
-      deltaPriceCents: centsOf(formData.get(`weight_price_${i}`)),
-      deltaDurationMin: numOf(formData.get(`weight_dur_${i}`)),
-    })).filter((r) => r.value !== "");
-    if (rows.length > 0)
-      priceRules.push({ id: uid(), attribute: "weight", enabled: true, rows });
+  // Bij varianten volgt de vanaf-prijs uit de goedkoopste variant (geen dubbele basisprijs).
+  let basePriceCents: number;
+  let baseDurationMin: number;
+  if (variants.length > 0) {
+    const cheapest = variants.reduce((a, b) => (b.priceCents < a.priceCents ? b : a));
+    basePriceCents = cheapest.priceCents;
+    baseDurationMin = perNight ? 0 : cheapest.durationMin;
+  } else if (numOf(formData.get("variant_count")) > 0) {
+    return { error: "Vul minstens één variant met een prijs in." };
+  } else {
+    basePriceCents = centsOf(formData.get("base_price"));
+    baseDurationMin = perNight ? 0 : numOf(formData.get("base_duration"));
+    if (!(basePriceCents > 0)) return { error: "Vul een prijs in." };
+    if (!perNight && !(baseDurationMin > 0)) return { error: "Vul een duur in." };
   }
 
   return {
@@ -168,7 +142,6 @@ function parseServiceForm(formData: FormData): { error?: string; payload?: Servi
       is_from_price: isFromPrice,
       variants,
       addons,
-      price_rules: priceRules,
       per_night: perNight,
       min_nights: minNights,
     },
@@ -199,6 +172,7 @@ export async function createServiceAction(
     required_skills: [],
     buffer_min: 15,
     status: "published",
+    price_rules: [],
     ...parsed.payload,
   });
   if (error) return { error: error.message };

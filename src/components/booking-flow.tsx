@@ -19,6 +19,7 @@ interface Props {
   slots: Slot[];
   savedAnimals: Animal[];
   preselect?: { date: string; time: string } | null;
+  defaultContact?: { email: string; phone: string; name: string };
 }
 
 function isoPlus(days: number): string {
@@ -27,7 +28,14 @@ function isoPlus(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function BookingFlow({ provider, service, slots, savedAnimals, preselect }: Props) {
+export function BookingFlow({
+  provider,
+  service,
+  slots,
+  savedAnimals,
+  preselect,
+  defaultContact,
+}: Props) {
   const hasOptions = service.variants.length > 0 || service.addons.length > 0;
   const momentLabel = service.perNight ? "Verblijf" : "Moment";
   const steps = useMemo(
@@ -55,7 +63,12 @@ export function BookingFlow({ provider, service, slots, savedAnimals, preselect 
   const [endDate, setEndDate] = useState(isoPlus(1 + Math.max(1, service.minNights)));
   const [dropoff, setDropoff] = useState("09:00");
   const [pickup, setPickup] = useState("17:00");
-  const [intake, setIntake] = useState({ email: "", phone: "", lastGroom: "", agree: false });
+  const [intake, setIntake] = useState({
+    email: defaultContact?.email ?? "",
+    phone: defaultContact?.phone ?? "",
+    lastGroom: "",
+    agree: false,
+  });
   const [idemKey] = useState(() =>
     typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `idem-${Date.now()}`,
   );
@@ -157,7 +170,7 @@ export function BookingFlow({ provider, service, slots, savedAnimals, preselect 
           priceCents: quote.totalCents,
           addons: service.addons.filter((a) => (qty[a.id] || 0) > 0).map((a) => a.name),
           idempotencyKey: idemKey,
-          owner: intake.email ? intake.email.split("@")[0] : "Nieuwe klant",
+          owner: defaultContact?.name || (intake.email ? intake.email.split("@")[0] : "Nieuwe klant"),
           animal: {
             name: chosen.name,
             species: chosen.species,
@@ -178,7 +191,7 @@ export function BookingFlow({ provider, service, slots, savedAnimals, preselect 
           priceCents: quote.totalCents,
           isRequest: false,
           idempotencyKey: idemKey,
-          owner: intake.email ? intake.email.split("@")[0] : "Nieuwe klant",
+          owner: defaultContact?.name || (intake.email ? intake.email.split("@")[0] : "Nieuwe klant"),
           animal: {
             name: chosen.name,
             breed: chosen.breed,

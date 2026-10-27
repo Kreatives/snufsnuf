@@ -75,6 +75,30 @@ export async function loginAction(
   redirect(profile?.role === "aanbieder" ? "/dashboard" : "/mijn-dieren");
 }
 
+/* ── Accountgegevens opslaan ─────────────────────────────────────────────── */
+export async function updateProfileAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/inloggen");
+
+  const name = String(formData.get("name") || "").trim();
+  const phone = String(formData.get("phone") || "").trim();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ display_name: name, phone })
+    .eq("id", user!.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/mijn-account");
+  return { success: true };
+}
+
 /* ── Uitloggen ───────────────────────────────────────────────────────────── */
 export async function logoutAction() {
   const supabase = await createClient(await cookies());

@@ -35,6 +35,9 @@ export async function SiteHeader() {
                   </Link>
                 </>
               )}
+              <Link href="/mijn-account" className="text-muted hover:text-ink transition-colors">
+                Account
+              </Link>
               <form action={logoutAction}>
                 <button type="submit" className="btn btn-ghost h-9 px-4">
                   Uitloggen

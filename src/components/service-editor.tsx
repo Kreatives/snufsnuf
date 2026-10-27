@@ -3,11 +3,8 @@
 import { useActionState, useState } from "react";
 import { createServiceAction, updateServiceAction } from "@/lib/provider-actions";
 import type { ActionState } from "@/lib/auth-actions";
-import { SIZE_LABELS, COAT_LABELS } from "@/lib/pricing";
-import type { SizeClass, CoatType, Service } from "@/lib/types";
+import type { Service } from "@/lib/types";
 
-const SIZES: SizeClass[] = ["xs", "s", "m", "l", "xl"];
-const COATS: CoatType[] = ["glad", "lang", "krul", "ruw", "dubbel"];
 const eur = (cents: number) => (cents / 100).toString();
 
 interface VariantRow {
@@ -20,11 +17,6 @@ interface AddonRow {
   price: string;
   dur: string;
   perUnit: boolean;
-}
-interface WeightRow {
-  value: string;
-  price: string;
-  dur: string;
 }
 
 export function ServiceEditor({ initial }: { initial?: Service }) {
@@ -51,33 +43,12 @@ export function ServiceEditor({ initial }: { initial?: Service }) {
       : [{ name: "", price: "", dur: "", perUnit: false }],
   );
 
-  const sizeRule = initial?.priceRules.find((r) => r.attribute === "size");
-  const coatRule = initial?.priceRules.find((r) => r.attribute === "coat");
-  const weightRule = initial?.priceRules.find((r) => r.attribute === "weight");
-  const [rules, setRules] = useState({
-    size: !!sizeRule?.enabled,
-    coat: !!coatRule?.enabled,
-    weight: !!weightRule?.enabled,
-  });
-  const [weightRows, setWeightRows] = useState<WeightRow[]>(
-    weightRule?.rows.length
-      ? weightRule.rows.map((r) => ({ value: r.value, price: eur(r.deltaPriceCents), dur: String(r.deltaDurationMin) }))
-      : [{ value: "", price: "", dur: "" }],
-  );
-
-  const ruleRow = (rule: typeof sizeRule, key: string, field: "price" | "dur") => {
-    const row = rule?.rows.find((r) => r.value === key);
-    if (!row) return undefined;
-    return field === "price" ? eur(row.deltaPriceCents) : String(row.deltaDurationMin);
-  };
-
   return (
     <form action={formAction} className="card p-6 flex flex-col gap-6">
       <h2 className="text-h3">{initial ? "Dienst bewerken" : "Nieuwe dienst"}</h2>
       {initial && <input type="hidden" name="service_id" value={initial.id} />}
       <input type="hidden" name="variant_count" value={hasVariants ? variants.length : 0} />
       <input type="hidden" name="addon_count" value={hasAddons ? addons.length : 0} />
-      <input type="hidden" name="weight_count" value={rules.weight ? weightRows.length : 0} />
 
       {/* Basis */}
       <div className="flex flex-col gap-4">
@@ -110,37 +81,44 @@ export function ServiceEditor({ initial }: { initial?: Service }) {
             defaultValue={initial?.description}
           />
         </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="field-label" htmlFor="base_price">
-              {perNight ? "Prijs per nacht (€)" : "Vanaf-prijs (€)"}
-            </label>
-            <input
-              id="base_price"
-              name="base_price"
-              className="field-input"
-              inputMode="decimal"
-              defaultValue={initial ? eur(initial.basePriceCents) : ""}
-              required
-            />
-          </div>
-          <div>
-            <label className="field-label" htmlFor="base_duration">
-              Basisduur (min)
-            </label>
-            <input
-              id="base_duration"
-              name="base_duration"
-              className="field-input"
-              inputMode="numeric"
-              defaultValue={initial?.baseDurationMin ?? 60}
-            />
-          </div>
-        </div>
-        <p className="text-[0.8125rem] text-muted">
-          De vanaf-prijs is wat de klant minimaal betaalt. Voeg je varianten toe, dan kiest de
-          klant een variant die deze prijs en duur vervangt.
-        </p>
+
+        {hasVariants ? (
+          <p className="text-[0.875rem] text-muted">
+            Deze dienst heeft varianten, dus de prijs en duur komen uit de gekozen variant. De
+            vanaf-prijs is automatisch de goedkoopste variant.
+          </p>
+        ) : (
+          <>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="field-label" htmlFor="base_price">
+                  {perNight ? "Prijs per nacht (€)" : "Prijs (€)"}
+                </label>
+                <input
+                  id="base_price"
+                  name="base_price"
+                  className="field-input"
+                  inputMode="decimal"
+                  defaultValue={initial && !initial.variants.length ? eur(initial.basePriceCents) : ""}
+                  required
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="base_duration">
+                  Duur (min)
+                </label>
+                <input
+                  id="base_duration"
+                  name="base_duration"
+                  className="field-input"
+                  inputMode="numeric"
+                  defaultValue={initial?.baseDurationMin ?? 60}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
         <div className="flex flex-wrap gap-5">
           <label className="flex items-center gap-2 text-[0.9375rem] cursor-pointer">
             <input
@@ -188,7 +166,9 @@ export function ServiceEditor({ initial }: { initial?: Service }) {
         </label>
         {hasVariants && (
           <div className="flex flex-col gap-2">
-            <p className="text-[0.8125rem] text-muted">Een gekozen variant vervangt de basisprijs en -duur.</p>
+            <p className="text-[0.8125rem] text-muted">
+              Elke variant heeft een eigen prijs en duur. De klant kiest er één.
+            </p>
             {variants.map((v, i) => (
               <div key={i} className="grid grid-cols-[1fr_6rem_6rem_auto] gap-3 items-center">
                 <input
@@ -294,89 +274,6 @@ export function ServiceEditor({ initial }: { initial?: Service }) {
         )}
       </div>
 
-      {/* Prijsregels */}
-      <div className="flex flex-col gap-3 border-t border-line pt-5">
-        <p className="text-eyebrow">Prijsregels (optioneel)</p>
-        <p className="text-[0.8125rem] text-muted">
-          Pas de prijs aan op kenmerken van het dier. Vul +/- euro en +/- minuten in.
-        </p>
-
-        <RuleToggle
-          label="Prijs hangt af van maat"
-          name="rule_size"
-          enabled={rules.size}
-          onToggle={(v) => setRules((r) => ({ ...r, size: v }))}
-        />
-        {rules.size && (
-          <DeltaTable
-            values={SIZES.map((s) => ({ key: s, label: SIZE_LABELS[s] }))}
-            prefix="size"
-            defaults={(k, f) => ruleRow(sizeRule, k, f)}
-          />
-        )}
-
-        <RuleToggle
-          label="Prijs hangt af van vachttype"
-          name="rule_coat"
-          enabled={rules.coat}
-          onToggle={(v) => setRules((r) => ({ ...r, coat: v }))}
-        />
-        {rules.coat && (
-          <DeltaTable
-            values={COATS.map((c) => ({ key: c, label: COAT_LABELS[c] }))}
-            prefix="coat"
-            defaults={(k, f) => ruleRow(coatRule, k, f)}
-          />
-        )}
-
-        <RuleToggle
-          label="Prijs hangt af van gewicht"
-          name="rule_weight"
-          enabled={rules.weight}
-          onToggle={(v) => setRules((r) => ({ ...r, weight: v }))}
-        />
-        {rules.weight && (
-          <div className="flex flex-col gap-2 pl-1">
-            {weightRows.map((w, i) => (
-              <div key={i} className="grid grid-cols-[1fr_5rem_5rem_auto] gap-3 items-center">
-                <input
-                  className="field-input h-10"
-                  placeholder="Bucket (bijv. >20)"
-                  name={`weight_val_${i}`}
-                  value={w.value}
-                  onChange={(e) =>
-                    setWeightRows((rows) => rows.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))
-                  }
-                />
-                <input
-                  className="field-input h-10"
-                  placeholder="± €"
-                  name={`weight_price_${i}`}
-                  value={w.price}
-                  onChange={(e) =>
-                    setWeightRows((rows) => rows.map((r, j) => (j === i ? { ...r, price: e.target.value } : r)))
-                  }
-                />
-                <input
-                  className="field-input h-10"
-                  placeholder="± min"
-                  name={`weight_dur_${i}`}
-                  value={w.dur}
-                  onChange={(e) =>
-                    setWeightRows((rows) => rows.map((r, j) => (j === i ? { ...r, dur: e.target.value } : r)))
-                  }
-                />
-                <RemoveBtn onClick={() => setWeightRows((r) => r.filter((_, j) => j !== i))} />
-              </div>
-            ))}
-            <AddBtn
-              label="Gewichtsregel toevoegen"
-              onClick={() => setWeightRows((r) => [...r, { value: "", price: "", dur: "" }])}
-            />
-          </div>
-        )}
-      </div>
-
       {state.error && <p className="chip chip-alert w-fit">{state.error}</p>}
       {state.success && <p className="chip w-fit">{initial ? "Opgeslagen." : "Dienst toegevoegd."}</p>}
 
@@ -405,64 +302,5 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
     >
       ✕
     </button>
-  );
-}
-
-function RuleToggle({
-  label,
-  name,
-  enabled,
-  onToggle,
-}: {
-  label: string;
-  name: string;
-  enabled: boolean;
-  onToggle: (v: boolean) => void;
-}) {
-  return (
-    <label className="flex items-center gap-2.5 text-[0.9375rem] cursor-pointer font-medium">
-      <input
-        type="checkbox"
-        name={name}
-        className="size-4 accent-ink"
-        checked={enabled}
-        onChange={(e) => onToggle(e.target.checked)}
-      />
-      {label}
-    </label>
-  );
-}
-
-function DeltaTable({
-  values,
-  prefix,
-  defaults,
-}: {
-  values: { key: string; label: string }[];
-  prefix: string;
-  defaults?: (key: string, field: "price" | "dur") => string | undefined;
-}) {
-  return (
-    <div className="flex flex-col gap-2 pl-1">
-      {values.map((v) => (
-        <div key={v.key} className="grid grid-cols-[1fr_6rem_6rem] gap-3 items-center">
-          <span className="text-[0.9375rem]">{v.label}</span>
-          <input
-            name={`${prefix}_price_${v.key}`}
-            className="field-input h-10"
-            inputMode="decimal"
-            placeholder="± €"
-            defaultValue={defaults?.(v.key, "price")}
-          />
-          <input
-            name={`${prefix}_dur_${v.key}`}
-            className="field-input h-10"
-            inputMode="numeric"
-            placeholder="± min"
-            defaultValue={defaults?.(v.key, "dur")}
-          />
-        </div>
-      ))}
-    </div>
   );
 }

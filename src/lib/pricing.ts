@@ -17,8 +17,11 @@ export const COAT_LABELS: Record<CoatType, string> = {
   dubbel: "dubbele vacht",
 };
 
-/** "Vanaf"-prijs voor de aanbiederkaart (I-13): altijd de basisprijs. */
+/** "Vanaf"-prijs: de goedkoopste variant als die er zijn, anders de basisprijs. */
 export function fromPrice(service: Service): number {
+  if (service.variants.length > 0) {
+    return Math.min(...service.variants.map((v) => v.priceCents));
+  }
   return service.basePriceCents;
 }
 
