@@ -61,21 +61,25 @@ export default async function ProviderPage({
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-eyebrow">{service.indicative ? "Vanaf" : "Prijs"}</p>
-                    <p className="text-h3">{euro(fromPrice(service))}</p>
+                    <p className="text-eyebrow">{service.isFromPrice ? "Vanaf" : "Prijs"}</p>
+                    <p className="text-h3">
+                      {euro(fromPrice(service))}
+                      {service.perNight && (
+                        <span className="text-[0.875rem] text-muted font-normal"> /nacht</span>
+                      )}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-line flex items-center justify-between gap-4 flex-wrap">
                   <p className="text-[0.875rem] text-muted">
-                    Duur {formatDuration(service.pricing[0].durationMin)} tot{" "}
-                    {formatDuration(service.pricing[service.pricing.length - 1].durationMin)},
-                    afhankelijk van maat en vacht
+                    {service.perNight
+                      ? "Meerdaags verblijf, prijs per nacht"
+                      : service.baseDurationMin > 0
+                        ? `Vanaf ${formatDuration(service.baseDurationMin)}`
+                        : ""}
                   </p>
-                  <Link
-                    href={`/boeken/${provider.slug}/${service.id}`}
-                    className="btn btn-primary"
-                  >
-                    Boek deze dienst
+                  <Link href={`/boeken/${provider.slug}/${service.id}`} className="btn btn-primary">
+                    {service.perNight ? "Boek verblijf" : "Boek deze dienst"}
                   </Link>
                 </div>
               </div>

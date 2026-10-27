@@ -1,21 +1,32 @@
 import { describe, it, expect } from "vitest";
-import { calculateQuote, type QuoteService } from "./quote";
+import { calculateQuote } from "./quote";
+import type { Service } from "./types";
 
-function service(overrides: Partial<QuoteService> = {}): QuoteService {
+function service(overrides: Partial<Service> = {}): Service {
   return {
+    id: "s1",
+    providerId: "p1",
+    species: "hond",
+    name: "Test",
+    category: "trimsalon",
+    description: "",
     basePriceCents: 4000,
     baseDurationMin: 60,
     isFromPrice: false,
     variants: [],
     addons: [],
     priceRules: [],
+    perNight: false,
+    minNights: 1,
+    requiredSkills: [],
+    bufferMin: 0,
     ...overrides,
   };
 }
 
 describe("calculateQuote", () => {
   it("geen regels: alleen de basisprijs en -duur", () => {
-    const q = calculateQuote(service(), { size: "M", coat: "short" });
+    const q = calculateQuote(service(), { size: "m", coat: "glad" });
     expect(q.totalCents).toBe(4000);
     expect(q.durationMin).toBe(60);
     expect(q.breakdown).toHaveLength(1);
@@ -31,13 +42,13 @@ describe("calculateQuote", () => {
             attribute: "size",
             enabled: true,
             rows: [
-              { value: "M", deltaPriceCents: 0, deltaDurationMin: 0 },
-              { value: "L", deltaPriceCents: 1500, deltaDurationMin: 30 },
+              { value: "m", deltaPriceCents: 0, deltaDurationMin: 0 },
+              { value: "l", deltaPriceCents: 1500, deltaDurationMin: 30 },
             ],
           },
         ],
       }),
-      { size: "L", coat: "short" },
+      { size: "l", coat: "glad" },
     );
     expect(q.totalCents).toBe(5500);
     expect(q.durationMin).toBe(90);
@@ -52,11 +63,11 @@ describe("calculateQuote", () => {
             id: "r1",
             attribute: "size",
             enabled: false,
-            rows: [{ value: "L", deltaPriceCents: 1500, deltaDurationMin: 30 }],
+            rows: [{ value: "l", deltaPriceCents: 1500, deltaDurationMin: 30 }],
           },
         ],
       }),
-      { size: "L" },
+      { size: "l" },
     );
     expect(q.totalCents).toBe(4000);
   });
@@ -69,7 +80,7 @@ describe("calculateQuote", () => {
           { id: "v2", name: "Knippen + föhnen", priceCents: 5500, durationMin: 90 },
         ],
       }),
-      { size: "M" },
+      { size: "m" },
       { variantId: "v2" },
     );
     expect(q.totalCents).toBe(5500);
@@ -91,7 +102,7 @@ describe("calculateQuote", () => {
           },
         ],
       }),
-      { size: "M" },
+      { size: "m" },
       { addons: [{ addonId: "a1", quantity: 3 }] },
     );
     expect(q.totalCents).toBe(4000 + 750 * 3);
@@ -112,7 +123,7 @@ describe("calculateQuote", () => {
           },
         ],
       }),
-      { size: "M" },
+      { size: "m" },
       { addons: [{ addonId: "a1", quantity: 1 }] },
     );
     expect(q.totalCents).toBe(3000);
@@ -138,5 +149,15 @@ describe("calculateQuote", () => {
     );
     expect(q.totalCents).toBe(6000);
     expect(q.durationMin).toBe(80);
+  });
+
+  it("per-nacht dienst vermenigvuldigt de basis met het aantal nachten", () => {
+    const q = calculateQuote(
+      service({ basePriceCents: 2500, baseDurationMin: 0, perNight: true, minNights: 1 }),
+      {},
+      { nights: 4 },
+    );
+    expect(q.totalCents).toBe(10000);
+    expect(q.breakdown[0].label).toBe("Per nacht × 4 nachten");
   });
 });

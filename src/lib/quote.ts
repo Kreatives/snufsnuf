@@ -1,51 +1,12 @@
 // Flexibele, provider-gedefinieerde prijsmotor (vervangt de harde maat×vacht-logica).
 // Pure functie, geen IO. De bot (getQuote) en de boekingsflow gebruiken exact deze logica.
 
-export type PetSize = "XS" | "S" | "M" | "L" | "XL";
-export type PetCoat = "short" | "long" | "curly" | "wire" | "double" | "hairless";
+import type { Service, PriceRule, PriceRuleRow, SizeClass, CoatType } from "./types";
 
 export interface QuotePet {
-  size?: PetSize | null;
-  coat?: PetCoat | null;
+  size?: SizeClass | null;
+  coat?: CoatType | null;
   weightKg?: number | null;
-}
-
-export interface Variant {
-  id: string;
-  name: string;
-  priceCents: number;
-  durationMin: number;
-}
-
-export interface Addon {
-  id: string;
-  name: string;
-  priceCents: number;
-  durationMin: number;
-  isPerUnit: boolean;
-  unitLabel?: string;
-}
-
-export interface PriceRuleRow {
-  value: string; // "L", "curly", "10-20", "<10", ">30"
-  deltaPriceCents: number;
-  deltaDurationMin: number;
-}
-
-export interface PriceRule {
-  id: string;
-  attribute: "size" | "coat" | "weight";
-  enabled: boolean;
-  rows: PriceRuleRow[];
-}
-
-export interface QuoteService {
-  basePriceCents: number;
-  baseDurationMin: number;
-  isFromPrice: boolean;
-  variants: Variant[];
-  addons: Addon[];
-  priceRules: PriceRule[];
 }
 
 export interface AddonSelection {
@@ -56,6 +17,8 @@ export interface AddonSelection {
 export interface QuoteSelection {
   variantId?: string | null;
   addons?: AddonSelection[];
+  /** aantal nachten voor per-nacht-diensten (pension/oppas) */
+  nights?: number;
 }
 
 export interface BreakdownItem {
@@ -71,27 +34,26 @@ export interface Quote {
   breakdown: BreakdownItem[];
 }
 
-const SIZE_LABEL: Record<PetSize, string> = {
-  XS: "Maat XS",
-  S: "Maat S",
-  M: "Maat M",
-  L: "Maat L",
-  XL: "Maat XL",
+const SIZE_LABEL: Record<SizeClass, string> = {
+  xxs: "Maat XXS",
+  xs: "Maat XS",
+  s: "Maat S",
+  m: "Maat M",
+  l: "Maat L",
+  xl: "Maat XL",
 };
-const COAT_LABEL: Record<PetCoat, string> = {
-  short: "Korte vacht",
-  long: "Lange vacht",
-  curly: "Krulvacht",
-  wire: "Ruwe vacht",
-  double: "Dubbele vacht",
-  hairless: "Haarloos",
+const COAT_LABEL: Record<CoatType, string> = {
+  glad: "Gladde vacht",
+  lang: "Lange vacht",
+  krul: "Krulvacht",
+  ruw: "Ruwe vacht",
+  dubbel: "Dubbele vacht",
 };
 
-/** Waarde van het dier voor een attribuut, als string voor exacte-match-regels. */
 function petValue(pet: QuotePet, attribute: PriceRule["attribute"]): string | null {
   if (attribute === "size") return pet.size ?? null;
   if (attribute === "coat") return pet.coat ?? null;
-  return null; // gewicht matcht via buckets, zie weightMatches
+  return null;
 }
 
 /** Matcht een gewicht (kg) tegen een bucket-label: "10-20", "<10", ">30", "20+". */
@@ -110,38 +72,47 @@ function weightMatches(value: string, kg: number | null | undefined): boolean {
 
 function ruleLabel(rule: PriceRule, row: PriceRuleRow): string {
   if (rule.attribute === "size" && row.value in SIZE_LABEL)
-    return SIZE_LABEL[row.value as PetSize];
+    return SIZE_LABEL[row.value as SizeClass];
   if (rule.attribute === "coat" && row.value in COAT_LABEL)
-    return COAT_LABEL[row.value as PetCoat];
+    return COAT_LABEL[row.value as CoatType];
   if (rule.attribute === "weight") return `Gewicht ${row.value}`;
   return row.value;
 }
 
 /**
- * total = (variant ? variant : basis) + ingeschakelde prijsregels die matchen + geselecteerde extra's × aantal.
- * Duur wordt op dezelfde manier opgeteld.
+ * total = (variant ? variant : basis) × nachten + prijsregels die matchen + extra's × aantal.
+ * Duur wordt op dezelfde manier opgebouwd. Geeft ook de breakdown voor het overzicht terug.
  */
 export function calculateQuote(
-  service: QuoteService,
+  service: Service,
   pet: QuotePet,
   selection: QuoteSelection = {},
 ): Quote {
   const breakdown: BreakdownItem[] = [];
 
-  // 1. Basis of variant
   const variant = selection.variantId
     ? service.variants.find((v) => v.id === selection.variantId)
     : undefined;
 
-  let totalCents = variant ? variant.priceCents : service.basePriceCents;
-  let durationMin = variant ? variant.durationMin : service.baseDurationMin;
+  const unitPrice = variant ? variant.priceCents : service.basePriceCents;
+  const unitDuration = variant ? variant.durationMin : service.baseDurationMin;
+
+  const nights = service.perNight
+    ? Math.max(selection.nights ?? service.minNights, service.minNights, 1)
+    : 1;
+
+  let totalCents = unitPrice * nights;
+  let durationMin = unitDuration * nights;
   breakdown.push({
-    label: variant ? variant.name : "Basis",
+    label: service.perNight
+      ? `${variant ? variant.name : "Per nacht"} × ${nights} ${nights === 1 ? "nacht" : "nachten"}`
+      : variant
+        ? variant.name
+        : "Basis",
     deltaPriceCents: totalCents,
     deltaDurationMin: durationMin,
   });
 
-  // 2. Prijsregels (max één per attribuut)
   for (const rule of service.priceRules) {
     if (!rule.enabled) continue;
     const row =
@@ -159,7 +130,6 @@ export function calculateQuote(
     });
   }
 
-  // 3. Extra's × aantal
   for (const sel of selection.addons ?? []) {
     const addon = service.addons.find((a) => a.id === sel.addonId);
     if (!addon) continue;

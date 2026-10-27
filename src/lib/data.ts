@@ -56,16 +56,18 @@ type ServiceRow = {
   provider_id: string;
   species: Service["species"];
   name: string;
+  category: string | null;
   description: string;
-  pricing: Service["pricing"];
-  coat_surcharge: Service["coatSurcharge"];
-  breed_exceptions: Service["breedExceptions"];
+  base_price_cents: number;
+  base_duration_min: number;
+  is_from_price: boolean;
+  variants: Service["variants"];
+  addons: Service["addons"];
+  price_rules: Service["priceRules"];
+  per_night: boolean;
+  min_nights: number;
   required_skills: Service["requiredSkills"];
   buffer_min: number;
-  indicative: boolean;
-  pricing_mode: Service["pricingMode"];
-  day_price_cents: number | null;
-  addons: Service["addons"];
 };
 
 function mapService(r: ServiceRow): Service {
@@ -74,16 +76,18 @@ function mapService(r: ServiceRow): Service {
     providerId: r.provider_id,
     species: r.species,
     name: r.name,
+    category: r.category ?? "",
     description: r.description,
-    pricing: r.pricing,
-    coatSurcharge: r.coat_surcharge,
-    breedExceptions: r.breed_exceptions,
-    requiredSkills: r.required_skills,
-    bufferMin: r.buffer_min,
-    indicative: r.indicative,
-    pricingMode: r.pricing_mode ?? "per_maat",
-    dayPriceCents: r.day_price_cents ?? null,
+    basePriceCents: r.base_price_cents ?? 0,
+    baseDurationMin: r.base_duration_min ?? 0,
+    isFromPrice: r.is_from_price ?? false,
+    variants: r.variants ?? [],
     addons: r.addons ?? [],
+    priceRules: r.price_rules ?? [],
+    perNight: r.per_night ?? false,
+    minNights: r.min_nights ?? 1,
+    requiredSkills: r.required_skills ?? [],
+    bufferMin: r.buffer_min ?? 0,
   };
 }
 

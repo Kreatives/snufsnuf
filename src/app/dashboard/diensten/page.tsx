@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getOwnedProvider, getServicesByProvider } from "@/lib/data";
 import { DashboardNav } from "@/components/dashboard-nav";
-import { AddServiceForm } from "@/components/add-service-form";
+import { ServiceEditor } from "@/components/service-editor";
 import { deleteServiceAction } from "@/lib/provider-actions";
 import { fromPrice, euro, formatDuration } from "@/lib/pricing";
 
@@ -26,15 +26,20 @@ export default async function DienstenPage() {
       {services.length > 0 && (
         <div className="flex flex-col gap-3 mb-8">
           {services.map((s) => {
-            const durs = s.pricing.map((p) => p.durationMin);
+            const meta: string[] = [];
+            if (s.perNight) meta.push("per nacht");
+            else if (s.baseDurationMin > 0) meta.push(`vanaf ${formatDuration(s.baseDurationMin)}`);
+            if (s.variants.length) meta.push(`${s.variants.length} varianten`);
+            if (s.addons.length) meta.push(`${s.addons.length} extra's`);
+            if (s.priceRules.some((r) => r.enabled)) meta.push("prijsregels");
             return (
               <article key={s.id} className="card p-5 flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-h3">{s.name}</h3>
                   <p className="text-[0.875rem] text-muted mt-1">
-                    {s.indicative ? "vanaf " : ""}
-                    {euro(fromPrice(s))} · {formatDuration(Math.min(...durs))} tot{" "}
-                    {formatDuration(Math.max(...durs))} · {s.pricing.length} maten
+                    {s.isFromPrice ? "vanaf " : ""}
+                    {euro(fromPrice(s))}
+                    {s.perNight ? " /nacht" : ""} · {meta.join(" · ")}
                   </p>
                 </div>
                 <form action={deleteServiceAction}>
@@ -49,7 +54,7 @@ export default async function DienstenPage() {
         </div>
       )}
 
-      <AddServiceForm />
+      <ServiceEditor />
     </main>
   );
 }

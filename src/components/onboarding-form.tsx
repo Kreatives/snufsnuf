@@ -10,6 +10,7 @@ const CATEGORIES = [
   { value: "dagopvang", label: "Dagopvang" },
   { value: "pension", label: "Pension" },
   { value: "uitlaatservice", label: "Uitlaatservice" },
+  { value: "oppas", label: "Oppas aan huis" },
 ];
 
 const SKILLS = [

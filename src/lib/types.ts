@@ -15,42 +15,59 @@ export type ProviderCategory =
   | "uitlaatservice"
   | "oppas";
 
-export type PricingMode = "per_maat" | "per_dag";
-
-export interface Addon {
+export interface Variant {
+  id: string;
   name: string;
   priceCents: number;
-}
-
-export interface PricingRule {
-  sizeClass: SizeClass;
-  priceCents: number;
   durationMin: number;
 }
 
-export interface BreedException {
-  breed: string;
+export interface Addon {
+  id: string;
+  name: string;
   priceCents: number;
   durationMin: number;
+  isPerUnit: boolean;
+  unitLabel?: string;
 }
 
+export interface PriceRuleRow {
+  /** gestandaardiseerde waarde: maat (xs..xl), vacht (glad..dubbel) of gewicht-bucket (">20") */
+  value: string;
+  deltaPriceCents: number;
+  deltaDurationMin: number;
+}
+
+export interface PriceRule {
+  id: string;
+  attribute: "size" | "coat" | "weight";
+  enabled: boolean;
+  rows: PriceRuleRow[];
+}
+
+/**
+ * Provider-gedefinieerde dienst (Salonized-stijl). Basisprijs + -duur zijn altijd
+ * gevuld zodat de bot altijd "vanaf €X" kan quoten. Varianten vervangen de basis,
+ * extra's tellen erbij op, prijsregels passen de basis aan op pet-attributen.
+ */
 export interface Service {
   id: string;
   providerId: string;
   species: Species;
   name: string;
+  category: string;
   description: string;
-  pricing: PricingRule[];
-  /** extra duur en prijs per vachttype (telt op bij de maatklasse) */
-  coatSurcharge: Partial<Record<CoatType, { extraMin: number; extraCents: number }>>;
-  breedExceptions: BreedException[];
+  basePriceCents: number;
+  baseDurationMin: number;
+  isFromPrice: boolean;
+  variants: Variant[];
+  addons: Addon[];
+  priceRules: PriceRule[];
+  /** meerdaagse verblijven: basisprijs geldt per nacht, boeking kiest een datumbereik */
+  perNight: boolean;
+  minNights: number;
   requiredSkills: Skill[];
   bufferMin: number;
-  indicative: boolean;
-  /** per_maat = trimmen (prijs uit maat+vacht), per_dag = oppas/verblijf (dagtarief) */
-  pricingMode: PricingMode;
-  dayPriceCents: number | null;
-  addons: Addon[];
 }
 
 export interface Provider {

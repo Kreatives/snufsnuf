@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { templatesFor } from "./service-templates";
 import type { SizeClass, CoatType } from "./types";
 
 export interface ActionState {
@@ -116,29 +117,40 @@ export async function createProviderAction(
   // Probeer een nette slug; bij botsing een korte suffix.
   for (let attempt = 0; attempt < 3; attempt++) {
     const slug = attempt === 0 ? baseSlug : `${baseSlug}-${user!.id.slice(0, 4)}`;
-    const { error } = await supabase.from("providers").insert({
-      owner_user_id: user!.id,
-      slug,
-      name,
-      category,
-      owner: name,
-      city,
-      kvk,
-      phone,
-      website,
-      address,
-      blurb,
-      species,
-      skills,
-      prikkelarm,
-      mobiel,
-      status: "actief",
-    });
-    if (!error) {
+    const { data, error } = await supabase
+      .from("providers")
+      .insert({
+        owner_user_id: user!.id,
+        slug,
+        name,
+        category,
+        owner: name,
+        city,
+        kvk,
+        phone,
+        website,
+        address,
+        blurb,
+        species,
+        skills,
+        prikkelarm,
+        mobiel,
+        status: "actief",
+      })
+      .select("id")
+      .single();
+    if (!error && data) {
+      // Diensten voorvullen op basis van de categorie (aanbieder kan ze aanpassen/wissen)
+      const templates = templatesFor(category).map((t) => ({
+        ...t,
+        provider_id: (data as { id: string }).id,
+        category,
+      }));
+      if (templates.length > 0) await supabase.from("services").insert(templates);
       revalidatePath("/");
       redirect("/dashboard");
     }
-    if (error.code !== "23505") return { error: error.message };
+    if (error && error.code !== "23505") return { error: error.message };
   }
   return { error: "Kon de salon niet aanmaken, probeer een andere naam." };
 }
