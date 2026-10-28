@@ -74,6 +74,7 @@ interface ServicePayload {
   variants: Variant[];
   addons: Addon[];
   per_night: boolean;
+  per_hour: boolean;
   min_nights: number;
 }
 
@@ -81,25 +82,12 @@ function parseServiceForm(formData: FormData): { error?: string; payload?: Servi
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
   const species = String(formData.get("species") || "hond");
-  const perNight = formData.get("per_night") === "on";
   const isFromPrice = formData.get("is_from_price") === "on";
   const minNights = Math.max(1, numOf(formData.get("min_nights")) || 1);
+  const isOppas = formData.get("is_oppas") === "on";
+  const oppasUnit = String(formData.get("oppas_unit") || "nacht");
 
-  if (!name) return { error: "Geef de dienst een naam." };
-
-  const variants: Variant[] = [];
-  for (let i = 0; i < numOf(formData.get("variant_count")); i++) {
-    const vName = String(formData.get(`variant_name_${i}`) || "").trim();
-    const price = centsOf(formData.get(`variant_price_${i}`));
-    if (vName && price > 0) {
-      variants.push({
-        id: uid(),
-        name: vName,
-        priceCents: price,
-        durationMin: numOf(formData.get(`variant_dur_${i}`)),
-      });
-    }
-  }
+  if (!name) return { error: "Geef het product een naam." };
 
   const addons: Addon[] = [];
   for (let i = 0; i < numOf(formData.get("addon_count")); i++) {
@@ -116,20 +104,55 @@ function parseServiceForm(formData: FormData): { error?: string; payload?: Servi
     }
   }
 
-  // Bij varianten volgt de vanaf-prijs uit de goedkoopste variant (geen dubbele basisprijs).
+  // ── Oppasproduct: per nacht of per uur, geen varianten ──
+  if (isOppas) {
+    const base = centsOf(formData.get("base_price"));
+    if (!(base > 0)) return { error: "Vul een tarief in." };
+    return {
+      payload: {
+        species,
+        name,
+        description,
+        base_price_cents: base,
+        base_duration_min: 0,
+        is_from_price: isFromPrice,
+        variants: [],
+        addons,
+        per_night: oppasUnit === "nacht",
+        per_hour: oppasUnit === "uur",
+        min_nights: minNights,
+      },
+    };
+  }
+
+  // ── Normaal product: basis of varianten ──
+  const variants: Variant[] = [];
+  for (let i = 0; i < numOf(formData.get("variant_count")); i++) {
+    const vName = String(formData.get(`variant_name_${i}`) || "").trim();
+    const price = centsOf(formData.get(`variant_price_${i}`));
+    if (vName && price > 0) {
+      variants.push({
+        id: uid(),
+        name: vName,
+        priceCents: price,
+        durationMin: numOf(formData.get(`variant_dur_${i}`)),
+      });
+    }
+  }
+
   let basePriceCents: number;
   let baseDurationMin: number;
   if (variants.length > 0) {
     const cheapest = variants.reduce((a, b) => (b.priceCents < a.priceCents ? b : a));
     basePriceCents = cheapest.priceCents;
-    baseDurationMin = perNight ? 0 : cheapest.durationMin;
+    baseDurationMin = cheapest.durationMin;
   } else if (numOf(formData.get("variant_count")) > 0) {
     return { error: "Vul minstens één variant met een prijs in." };
   } else {
     basePriceCents = centsOf(formData.get("base_price"));
-    baseDurationMin = perNight ? 0 : numOf(formData.get("base_duration"));
+    baseDurationMin = numOf(formData.get("base_duration"));
     if (!(basePriceCents > 0)) return { error: "Vul een prijs in." };
-    if (!perNight && !(baseDurationMin > 0)) return { error: "Vul een duur in." };
+    if (!(baseDurationMin > 0)) return { error: "Vul een duur in." };
   }
 
   return {
@@ -142,7 +165,8 @@ function parseServiceForm(formData: FormData): { error?: string; payload?: Servi
       is_from_price: isFromPrice,
       variants,
       addons,
-      per_night: perNight,
+      per_night: false,
+      per_hour: false,
       min_nights: minNights,
     },
   };

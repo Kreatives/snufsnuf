@@ -24,9 +24,10 @@ export default async function BookingPage({
     phone: me?.phone ?? "",
     name: me?.name ?? "",
   };
-  const slots = service.perNight
-    ? []
-    : await getAvailableSlots(provider.id, { days: 14, durationMin: service.baseDurationMin || 30 });
+  const slots =
+    service.perNight || service.perHour
+      ? []
+      : await getAvailableSlots(provider.id, { days: 14, durationMin: service.baseDurationMin || 30 });
   const { date, time } = await searchParams;
   const preselect = date && time ? { date, time } : null;
 

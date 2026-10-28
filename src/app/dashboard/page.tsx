@@ -77,6 +77,9 @@ export default async function DashboardPage({
   const exceptions: Record<string, string> = {};
   for (const e of exceptionRows) exceptions[e.date] = e.reason;
 
+  const timedItems = items.filter((i) => !i.isMultiDay);
+  const allDayItems = items.filter((i) => i.isMultiDay);
+
   const rangeLabel = `${new Date(days[0].iso).toLocaleDateString("nl-NL", {
     day: "numeric",
     month: "short",
@@ -135,7 +138,8 @@ export default async function DashboardPage({
 
       <WeekAgenda
         days={days}
-        items={items}
+        items={timedItems}
+        allDayItems={allDayItems}
         rescheduleSlots={rescheduleSlots}
         hours={hours}
         exceptions={exceptions}

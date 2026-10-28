@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const TABS = [
   { href: "/dashboard", label: "Agenda" },
-  { href: "/dashboard/diensten", label: "Diensten" },
+  { href: "/dashboard/diensten", label: "Aanbod" },
   { href: "/dashboard/openingstijden", label: "Openingstijden" },
 ];
 

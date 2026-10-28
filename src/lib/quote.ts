@@ -19,6 +19,8 @@ export interface QuoteSelection {
   addons?: AddonSelection[];
   /** aantal nachten voor per-nacht-diensten (pension/oppas) */
   nights?: number;
+  /** aantal uren voor per-uur-oppas */
+  hours?: number;
 }
 
 export interface BreakdownItem {
@@ -97,18 +99,20 @@ export function calculateQuote(
   const unitPrice = variant ? variant.priceCents : service.basePriceCents;
   const unitDuration = variant ? variant.durationMin : service.baseDurationMin;
 
-  const nights = service.perNight
-    ? Math.max(selection.nights ?? service.minNights, service.minNights, 1)
-    : 1;
+  let units = 1;
+  let baseLabel = variant ? variant.name : "Basis";
+  if (service.perNight) {
+    units = Math.max(selection.nights ?? service.minNights, service.minNights, 1);
+    baseLabel = `${variant ? variant.name : "Per nacht"} × ${units} ${units === 1 ? "nacht" : "nachten"}`;
+  } else if (service.perHour) {
+    units = Math.max(1, Math.round(selection.hours ?? 1));
+    baseLabel = `Per uur × ${units} uur`;
+  }
 
-  let totalCents = unitPrice * nights;
-  let durationMin = unitDuration * nights;
+  let totalCents = unitPrice * units;
+  let durationMin = service.perHour ? units * 60 : unitDuration * units;
   breakdown.push({
-    label: service.perNight
-      ? `${variant ? variant.name : "Per nacht"} × ${nights} ${nights === 1 ? "nacht" : "nachten"}`
-      : variant
-        ? variant.name
-        : "Basis",
+    label: baseLabel,
     deltaPriceCents: totalCents,
     deltaDurationMin: durationMin,
   });

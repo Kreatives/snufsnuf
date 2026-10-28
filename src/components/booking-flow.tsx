@@ -37,7 +37,7 @@ export function BookingFlow({
   defaultContact,
 }: Props) {
   const hasOptions = service.variants.length > 0 || service.addons.length > 0;
-  const momentLabel = service.perNight ? "Verblijf" : "Moment";
+  const momentLabel = service.perNight ? "Verblijf" : service.perHour ? "Oppas" : "Moment";
   const steps = useMemo(
     () => ["Dier", ...(hasOptions ? ["Opties"] : []), momentLabel, "Intake", "Betalen"],
     [hasOptions, momentLabel],
@@ -106,6 +106,13 @@ export function BookingFlow({
   }, [animalId, draft, savedAnimals]);
 
   const nights = service.perNight ? nightsBetween(startDate, endDate) : 1;
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const hoursCount = service.perHour
+    ? Math.max(0, (toMin(pickup) - toMin(dropoff)) / 60)
+    : 0;
 
   const selection: QuoteSelection = useMemo(
     () => ({
@@ -114,8 +121,9 @@ export function BookingFlow({
         .filter(([, q]) => q > 0)
         .map(([addonId, quantity]) => ({ addonId, quantity })),
       nights,
+      hours: hoursCount,
     }),
-    [variantId, qty, nights],
+    [variantId, qty, nights, hoursCount],
   );
 
   const quote = useMemo(
@@ -147,9 +155,11 @@ export function BookingFlow({
       ? !!chosen && (animalId !== "new" || draft.name.trim() !== "")
       : current === "Verblijf"
         ? nights > 0
-        : current === "Moment"
-          ? !!slot
-          : current === "Intake"
+        : current === "Oppas"
+          ? hoursCount > 0
+          : current === "Moment"
+            ? !!slot
+            : current === "Intake"
             ? intake.email.trim() !== "" && intake.phone.trim() !== "" && intake.agree
             : true;
 
@@ -184,9 +194,9 @@ export function BookingFlow({
           providerId: provider.id,
           serviceId: service.id,
           serviceName: service.name,
-          staff: slot?.staff ?? "",
-          date: slot!.date,
-          time: slot!.time,
+          staff: service.perHour ? "" : slot?.staff ?? "",
+          date: service.perHour ? startDate : slot!.date,
+          time: service.perHour ? dropoff : slot!.time,
           durationMin: quote.durationMin,
           priceCents: quote.totalCents,
           isRequest: false,
@@ -242,9 +252,7 @@ export function BookingFlow({
               Je slaat een dier één keer op en hergebruikt het daarna.
             </p>
             <div className="flex flex-col gap-3">
-              {savedAnimals
-                .filter((a) => a.species === service.species)
-                .map((a) => (
+              {savedAnimals.map((a) => (
                   <button
                     key={a.id}
                     type="button"
@@ -484,6 +492,74 @@ export function BookingFlow({
           </section>
         )}
 
+        {current === "Oppas" && (
+          <section className="mt-8">
+            <h2 className="text-h2 mb-1">Afhalen en ophalen</h2>
+            <p className="text-muted text-[0.9375rem] mb-6">
+              Kies de dag en het afhaal- en ophaalmoment. Je betaalt per uur.
+            </p>
+            <div className="card p-5 flex flex-col gap-4">
+              <div>
+                <label className="field-label" htmlFor="oppasdag">
+                  Dag
+                </label>
+                <input
+                  id="oppasdag"
+                  type="date"
+                  className="field-input"
+                  min={isoPlus(1)}
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="field-label" htmlFor="afhaal">
+                    Afhaaltijd
+                  </label>
+                  <select
+                    id="afhaal"
+                    className="field-input"
+                    value={dropoff}
+                    onChange={(e) => setDropoff(e.target.value)}
+                  >
+                    {DAY_TIMES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="ophaal2">
+                    Ophaaltijd
+                  </label>
+                  <select
+                    id="ophaal2"
+                    className="field-input"
+                    value={pickup}
+                    onChange={(e) => setPickup(e.target.value)}
+                  >
+                    {DAY_TIMES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {hoursCount <= 0 && (
+                <p className="chip chip-alert w-fit">Ophalen moet na afhalen liggen.</p>
+              )}
+              {hoursCount > 0 && (
+                <p className="text-[0.875rem] text-muted">
+                  {hoursCount} uur oppas.
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
         {current === "Verblijf" && (
           <section className="mt-8">
             <h2 className="text-h2 mb-1">Kies de periode</h2>
@@ -678,11 +754,15 @@ export function BookingFlow({
               ? nights > 0
                 ? `${fmtDate(startDate)} — ${fmtDate(endDate)} · ${nights} ${nights === 1 ? "nacht" : "nachten"}`
                 : null
-              : slot
-                ? `${fmtDate(slot.date)}, ${slot.time}`
-                : null
+              : service.perHour
+                ? hoursCount > 0
+                  ? `${fmtDate(startDate)} · ${dropoff}–${pickup} · ${hoursCount} uur`
+                  : null
+                : slot
+                  ? `${fmtDate(slot.date)}, ${slot.time}`
+                  : null
           }
-          showHold={!service.perNight && !!slot}
+          showHold={!service.perNight && !service.perHour && !!slot}
         />
       </aside>
     </div>

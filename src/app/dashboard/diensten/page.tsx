@@ -20,7 +20,7 @@ export default async function DienstenPage() {
   return (
     <main className="mx-auto max-w-[760px] px-6 py-10">
       <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
-        <h1 className="text-h2">Diensten</h1>
+        <h1 className="text-h2">Aanbod</h1>
         <DashboardNav active="/dashboard/diensten" />
       </div>
 
@@ -29,6 +29,7 @@ export default async function DienstenPage() {
           {services.map((s) => {
             const meta: string[] = [];
             if (s.perNight) meta.push("per nacht");
+            else if (s.perHour) meta.push("per uur");
             else if (s.baseDurationMin > 0) meta.push(`vanaf ${formatDuration(s.baseDurationMin)}`);
             if (s.variants.length) meta.push(`${s.variants.length} varianten`);
             if (s.addons.length) meta.push(`${s.addons.length} extra's`);
@@ -40,7 +41,7 @@ export default async function DienstenPage() {
                   <p className="text-[0.875rem] text-muted mt-1">
                     {s.isFromPrice ? "vanaf " : ""}
                     {euro(fromPrice(s))}
-                    {s.perNight ? " /nacht" : ""} · {meta.join(" · ")}
+                    {s.perNight ? " /nacht" : s.perHour ? " /uur" : ""} · {meta.join(" · ")}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

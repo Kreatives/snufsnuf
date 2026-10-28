@@ -31,36 +31,51 @@ export function AppointmentBlock({
   top,
   height,
   rescheduleSlots,
+  allDay,
 }: {
   item: AgendaItem;
-  top: number;
-  height: number;
+  top?: number;
+  height?: number;
   rescheduleSlots: Slot[];
+  allDay?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const alert = item.muzzle || item.biteRisk >= 2;
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        style={{ top, height }}
-        className={`absolute left-1 right-1 text-left rounded-md border px-2 py-1 overflow-hidden transition-colors hover:border-ink ${
-          item.isBlock ? "border-line bg-bg" : "border-line-strong bg-surface"
-        } ${item.status === "geannuleerd" ? "opacity-40 line-through" : ""}`}
-      >
-        <p className="text-[0.6875rem] text-muted leading-none">{item.time}</p>
-        <p
-          className={`text-[0.8125rem] leading-tight truncate mt-0.5 ${
-            item.isBlock ? "text-muted font-normal" : "font-medium"
+      {allDay ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`w-full text-left rounded-md border border-line-strong bg-surface px-2 py-1 transition-colors hover:border-ink ${
+            item.status === "geannuleerd" ? "opacity-40 line-through" : ""
           }`}
         >
-          {item.animalName}
-        </p>
-        <p className="text-[0.75rem] text-muted truncate">{item.title}</p>
-        {alert && <span className="chip chip-alert mt-1 h-5 text-[0.6875rem]">Muilkorf</span>}
-      </button>
+          <span className="text-[0.75rem] font-medium block truncate">{item.title}</span>
+          <span className="text-[0.6875rem] text-muted block truncate">{item.animalName}</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          style={{ top, height }}
+          className={`absolute left-1 right-1 text-left rounded-md border px-2 py-1 overflow-hidden transition-colors hover:border-ink ${
+            item.isBlock ? "border-line bg-bg" : "border-line-strong bg-surface"
+          } ${item.status === "geannuleerd" ? "opacity-40 line-through" : ""}`}
+        >
+          <p className="text-[0.6875rem] text-muted leading-none">{item.time}</p>
+          <p
+            className={`text-[0.8125rem] leading-tight truncate mt-0.5 ${
+              item.isBlock ? "text-muted font-normal" : "font-medium"
+            }`}
+          >
+            {item.animalName}
+          </p>
+          <p className="text-[0.75rem] text-muted truncate">{item.title}</p>
+          {alert && <span className="chip chip-alert mt-1 h-5 text-[0.6875rem]">Muilkorf</span>}
+        </button>
+      )}
       {open && (
         <AppointmentModal
           item={item}

@@ -70,6 +70,7 @@ type ServiceRow = {
   price_rules: Service["priceRules"];
   per_night: boolean;
   min_nights: number;
+  per_hour: boolean;
   required_skills: Service["requiredSkills"];
   buffer_min: number;
 };
@@ -90,6 +91,7 @@ function mapService(r: ServiceRow): Service {
     priceRules: r.price_rules ?? [],
     perNight: r.per_night ?? false,
     minNights: r.min_nights ?? 1,
+    perHour: r.per_hour ?? false,
     requiredSkills: r.required_skills ?? [],
     bufferMin: r.buffer_min ?? 0,
   };
@@ -311,6 +313,7 @@ type AppointmentRow = {
   service_name: string;
   staff: string;
   starts_at: string;
+  ends_at: string | null;
   duration_min: number;
   price_cents: number;
   status: AppointmentStatus;
@@ -344,6 +347,8 @@ export interface AgendaItem {
   phone: string | null;
   lastGroom: string | null;
   isBlock: boolean;
+  endDateISO: string | null;
+  isMultiDay: boolean;
 }
 
 /** Afspraken binnen een datumbereik, voor het weekoverzicht in het dashboard. */
@@ -402,6 +407,13 @@ export async function getAgendaItems(
       phone: intake.phone ?? null,
       lastGroom: intake.lastGroom ?? null,
       isBlock: r.is_block ?? false,
+      endDateISO: r.ends_at
+        ? new Date(r.ends_at).toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" })
+        : null,
+      isMultiDay: r.ends_at
+        ? new Date(r.ends_at).toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" }) !==
+          dateISO
+        : false,
     };
   }) ?? [];
 }

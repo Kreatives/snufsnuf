@@ -22,17 +22,20 @@ const EXCEPTION_TINT = "rgba(201, 160, 140, 0.20)";
 export function WeekAgenda({
   days,
   items,
+  allDayItems,
   rescheduleSlots,
   hours,
   exceptions,
 }: {
   days: Day[];
   items: AgendaItem[];
+  allDayItems: AgendaItem[];
   rescheduleSlots: Slot[];
   hours: Record<number, { open: number; close: number }>;
   exceptions: Record<string, string>;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const hasAllDay = allDayItems.length > 0;
 
   // Scroll bij laden naar het vroegste openingsuur (anders start je om middernacht).
   useEffect(() => {
@@ -70,6 +73,30 @@ export function WeekAgenda({
             );
           })}
         </div>
+
+        {/* Hele-dag-balk voor meerdaagse oppas/verblijf */}
+        {hasAllDay && (
+          <div className="grid grid-cols-[56px_repeat(7,1fr)] border-b border-line bg-surface">
+            <div className="text-[0.625rem] text-muted text-right pr-2 pt-2">Hele dag</div>
+            {days.map((d) => {
+              const covering = allDayItems.filter(
+                (i) => i.dateISO <= d.iso && d.iso <= (i.endDateISO ?? i.dateISO),
+              );
+              return (
+                <div key={d.iso} className="border-l border-line p-1 flex flex-col gap-1 min-h-[2.5rem]">
+                  {covering.map((i) => (
+                    <AppointmentBlock
+                      key={i.id}
+                      item={i}
+                      rescheduleSlots={rescheduleSlots}
+                      allDay
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Tijdraster 0–24 */}
         <div className="grid grid-cols-[56px_repeat(7,1fr)]">

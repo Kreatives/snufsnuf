@@ -66,6 +66,8 @@ export interface Service {
   /** meerdaagse verblijven: basisprijs geldt per nacht, boeking kiest een datumbereik */
   perNight: boolean;
   minNights: number;
+  /** oppas per uur: basisprijs geldt per uur, boeking kiest afhaal- en ophaaltijd */
+  perHour: boolean;
   requiredSkills: Skill[];
   bufferMin: number;
 }

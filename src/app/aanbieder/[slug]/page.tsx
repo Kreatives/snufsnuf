@@ -67,6 +67,9 @@ export default async function ProviderPage({
                       {service.perNight && (
                         <span className="text-[0.875rem] text-muted font-normal"> /nacht</span>
                       )}
+                      {service.perHour && (
+                        <span className="text-[0.875rem] text-muted font-normal"> /uur</span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -74,12 +77,14 @@ export default async function ProviderPage({
                   <p className="text-[0.875rem] text-muted">
                     {service.perNight
                       ? "Meerdaags verblijf, prijs per nacht"
-                      : service.baseDurationMin > 0
-                        ? `Vanaf ${formatDuration(service.baseDurationMin)}`
-                        : ""}
+                      : service.perHour
+                        ? "Oppas, prijs per uur"
+                        : service.baseDurationMin > 0
+                          ? `Vanaf ${formatDuration(service.baseDurationMin)}`
+                          : ""}
                   </p>
                   <Link href={`/boeken/${provider.slug}/${service.id}`} className="btn btn-primary">
-                    {service.perNight ? "Boek verblijf" : "Boek deze dienst"}
+                    {service.perNight ? "Boek verblijf" : service.perHour ? "Boek oppas" : "Boek deze dienst"}
                   </Link>
                 </div>
               </div>
