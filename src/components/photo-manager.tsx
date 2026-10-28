@@ -8,6 +8,15 @@ import { updateLogoAction, addPhotoAction, removePhotoAction } from "@/lib/provi
 const uid = () =>
   typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
 
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_PHOTOS = 8;
+
+function validate(file: File): string | null {
+  if (!file.type.startsWith("image/")) return "Kies een afbeelding (jpg, png of webp).";
+  if (file.size > MAX_BYTES) return "Deze foto is te groot — maximaal 5 MB.";
+  return null;
+}
+
 export function PhotoManager({
   providerId,
   logoUrl,
@@ -37,6 +46,12 @@ export function PhotoManager({
   async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const invalid = validate(file);
+    if (invalid) {
+      setError(invalid);
+      e.target.value = "";
+      return;
+    }
     setBusy(true);
     setError(null);
     const url = await upload(file);
@@ -52,6 +67,12 @@ export function PhotoManager({
   async function onAddPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const invalid = validate(file);
+    if (invalid) {
+      setError(invalid);
+      e.target.value = "";
+      return;
+    }
     setBusy(true);
     setError(null);
     const url = await upload(file);
@@ -85,7 +106,9 @@ export function PhotoManager({
         )}
         <div>
           <p className="font-medium mb-1">Profielfoto</p>
-          <p className="text-[0.875rem] text-muted mb-3">Je logo of een herkenbare foto.</p>
+          <p className="text-[0.875rem] text-muted mb-3">
+            Je logo of avatar — dit staat náást je salonnaam, niet in de galerij.
+          </p>
           <input
             ref={logoInput}
             type="file"
@@ -107,7 +130,10 @@ export function PhotoManager({
       {/* Salonfoto's */}
       <div className="card p-6">
         <p className="font-medium mb-1">Salonfoto&apos;s</p>
-        <p className="text-[0.875rem] text-muted mb-4">Werkfoto&apos;s die baasjes op je profiel zien.</p>
+        <p className="text-[0.875rem] text-muted mb-4">
+          Dit is wat baasjes op je profiel en op de marktplaats zien. De eerste foto is je omslagfoto.
+          Maximaal {MAX_PHOTOS} foto&apos;s, elk tot 5 MB.
+        </p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {photos.map((url) => (
             <div key={url} className="relative aspect-[4/3]">
@@ -124,14 +150,16 @@ export function PhotoManager({
               </button>
             </div>
           ))}
-          <button
-            type="button"
-            onClick={() => photoInput.current?.click()}
-            disabled={busy}
-            className="aspect-[4/3] rounded-md border border-dashed border-line-strong text-[0.875rem] text-muted hover:border-ink hover:text-ink transition-colors"
-          >
-            + Foto
-          </button>
+          {photos.length < MAX_PHOTOS && (
+            <button
+              type="button"
+              onClick={() => photoInput.current?.click()}
+              disabled={busy}
+              className="aspect-[4/3] rounded-md border border-dashed border-line-strong text-[0.875rem] text-muted hover:border-ink hover:text-ink transition-colors"
+            >
+              + Foto
+            </button>
+          )}
           <input
             ref={photoInput}
             type="file"

@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
-import { templatesFor } from "./service-templates";
 import type { SizeClass, CoatType } from "./types";
 
 export interface ActionState {
@@ -124,15 +123,14 @@ export async function createProviderAction(
   const phone = String(formData.get("phone") || "").trim();
   const website = String(formData.get("website") || "").trim();
   const address = String(formData.get("address") || "").trim();
+  const postalCode = String(formData.get("postalCode") || "").trim();
   const blurb = String(formData.get("blurb") || "").trim();
   const prikkelarm = formData.get("prikkelarm") === "on";
   const mobiel = formData.get("mobiel") === "on";
   const skills = formData.getAll("skills").map(String);
 
-  if (!name || !city || blurb.length < 150) {
-    return {
-      error: "Vul handelsnaam, stad en een profieltekst van minstens 150 tekens in.",
-    };
+  if (!name || !city) {
+    return { error: "Vul in elk geval een handelsnaam en stad in." };
   }
 
   const species = category === "kattentrimsalon" ? ["kat"] : ["hond"];
@@ -155,6 +153,7 @@ export async function createProviderAction(
         phone,
         website,
         address,
+        postal_code: postalCode,
         blurb,
         species,
         skills,
@@ -165,13 +164,7 @@ export async function createProviderAction(
       .select("id")
       .single();
     if (!error && data) {
-      // Diensten voorvullen op basis van de categorie (aanbieder kan ze aanpassen/wissen)
-      const templates = templatesFor(category).map((t) => ({
-        ...t,
-        provider_id: (data as { id: string }).id,
-        category,
-      }));
-      if (templates.length > 0) await supabase.from("services").insert(templates);
+      // Nieuwe salon start met een leeg aanbod; de aanbieder voegt zelf producten toe.
       const cookieStore = await cookies();
       cookieStore.set("active_salon", (data as { id: string }).id, {
         path: "/",

@@ -398,6 +398,7 @@ export async function updateSalonAction(
       phone: String(formData.get("phone") || "").trim(),
       website: String(formData.get("website") || "").trim(),
       address: String(formData.get("address") || "").trim(),
+      postal_code: String(formData.get("postalCode") || "").trim(),
       blurb,
       prikkelarm: formData.get("prikkelarm") === "on",
       mobiel: formData.get("mobiel") === "on",
@@ -406,7 +407,7 @@ export async function updateSalonAction(
     .eq("id", providerId);
   if (error) return { error: error.message };
 
-  revalidatePath("/dashboard/instellingen");
+  revalidatePath("/dashboard/salon");
   revalidatePath("/");
   revalidatePath(`/aanbieder`);
   return { success: true };

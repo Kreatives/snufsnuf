@@ -21,6 +21,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
         salons={salons.map((s) => ({ id: s.id, name: s.name }))}
         activeId={active.id}
         activeName={active.name}
+        activeLogo={active.logoUrl}
         userEmail={user.email ?? ""}
       />
       <div className="flex-1 min-w-0 px-6 sm:px-8 py-8 max-w-[1200px]">{children}</div>

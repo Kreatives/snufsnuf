@@ -19,11 +19,13 @@ export function DashboardSidebar({
   salons,
   activeId,
   activeName,
+  activeLogo,
   userEmail,
 }: {
   salons: { id: string; name: string }[];
   activeId: string;
   activeName: string;
+  activeLogo?: string | null;
   userEmail: string;
 }) {
   const pathname = usePathname();
@@ -40,7 +42,12 @@ export function DashboardSidebar({
           onClick={() => setOpen((o) => !o)}
           className="w-full flex items-center gap-2.5 rounded-md border border-line p-2 text-left hover:border-ink transition-colors"
         >
-          <span className="media-ph size-8 rounded-md shrink-0" aria-hidden />
+          {activeLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={activeLogo} alt="" className="size-8 rounded-md object-cover shrink-0" />
+          ) : (
+            <span className="media-ph size-8 rounded-md shrink-0" aria-hidden />
+          )}
           <span className="flex-1 min-w-0">
             <span className="block text-[0.875rem] font-medium truncate">{activeName}</span>
             <span className="block text-[0.75rem] text-muted truncate">{userEmail}</span>

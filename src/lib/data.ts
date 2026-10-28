@@ -36,6 +36,7 @@ type ProviderRow = {
   phone: string | null;
   website: string | null;
   address: string | null;
+  postal_code: string | null;
   logo_url: string | null;
   photos: string[] | null;
 };
@@ -62,6 +63,7 @@ function mapProvider(r: ProviderRow): Provider {
     phone: r.phone ?? "",
     website: r.website ?? "",
     address: r.address ?? "",
+    postalCode: r.postal_code ?? "",
     logoUrl: r.logo_url ?? null,
     photos: r.photos ?? [],
   };

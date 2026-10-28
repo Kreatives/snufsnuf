@@ -80,11 +80,19 @@ export function OnboardingForm({ defaultName }: { defaultName?: string }) {
         </div>
       </div>
 
-      <div>
-        <label className="field-label" htmlFor="address">
-          Adres
-        </label>
-        <input id="address" name="address" className="field-input" />
+      <div className="grid sm:grid-cols-[2fr_1fr] gap-4">
+        <div>
+          <label className="field-label" htmlFor="address">
+            Straat en huisnummer
+          </label>
+          <input id="address" name="address" className="field-input" placeholder="Glenn Millerstraat 28" />
+        </div>
+        <div>
+          <label className="field-label" htmlFor="postalCode">
+            Postcode
+          </label>
+          <input id="postalCode" name="postalCode" className="field-input" placeholder="6836 DV" />
+        </div>
       </div>
 
       <div>
@@ -95,11 +103,9 @@ export function OnboardingForm({ defaultName }: { defaultName?: string }) {
           id="blurb"
           name="blurb"
           className="field-input h-28 py-2 resize-none"
-          minLength={150}
           maxLength={1200}
-          placeholder="Vertel baasjes hoe je werkt, met welke dieren je ervaring hebt en wat jouw salon bijzonder maakt. Minimaal 150 tekens."
+          placeholder="Vertel baasjes hoe je werkt, met welke dieren je ervaring hebt en wat jouw salon bijzonder maakt."
         />
-        <p className="text-[0.8125rem] text-muted mt-1">Tussen 150 en 1.200 tekens.</p>
       </div>
 
       <div>

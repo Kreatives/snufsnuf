@@ -57,11 +57,30 @@ export function SalonForm({ provider }: { provider: Provider }) {
           <input id="city" name="city" className="field-input" defaultValue={provider.city} required />
         </div>
         <div>
-          <label className="field-label" htmlFor="address">
-            Adres
+          <label className="field-label" htmlFor="postalCode">
+            Postcode
           </label>
-          <input id="address" name="address" className="field-input" defaultValue={provider.address} />
+          <input
+            id="postalCode"
+            name="postalCode"
+            className="field-input"
+            defaultValue={provider.postalCode}
+            placeholder="6836 DV"
+          />
         </div>
+      </div>
+
+      <div>
+        <label className="field-label" htmlFor="address">
+          Straat en huisnummer
+        </label>
+        <input
+          id="address"
+          name="address"
+          className="field-input"
+          defaultValue={provider.address}
+          placeholder="Glenn Millerstraat 28"
+        />
       </div>
 
       <div className="grid sm:grid-cols-3 gap-4">
@@ -100,7 +119,6 @@ export function SalonForm({ provider }: { provider: Provider }) {
           name="blurb"
           className="field-input h-28 py-2 resize-none"
           defaultValue={provider.blurb}
-          minLength={150}
           maxLength={1200}
         />
       </div>

@@ -95,6 +95,7 @@ export interface Provider {
   phone: string;
   website: string;
   address: string;
+  postalCode: string;
   logoUrl: string | null;
   photos: string[];
 }

@@ -24,18 +24,25 @@ export default async function ProviderPage({
       </Link>
 
       {provider.photos.length > 0 ? (
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-2">
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-2 sm:h-[400px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={provider.photos[0]}
             alt={provider.name}
-            className="w-full aspect-[16/9] object-cover rounded-lg"
+            className="w-full h-[240px] sm:h-full object-cover rounded-lg"
           />
-          {provider.photos[1] && (
-            <div className="grid grid-rows-2 gap-2">
+          {provider.photos.length > 1 && (
+            <div className="hidden sm:grid grid-rows-2 gap-2">
               {provider.photos.slice(1, 3).map((p) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={p} src={p} alt="" className="w-full h-full object-cover rounded-lg" />
+                <img
+                  key={p}
+                  src={p}
+                  alt=""
+                  className={`w-full object-cover rounded-lg h-full ${
+                    provider.photos.length === 2 ? "row-span-2" : ""
+                  }`}
+                />
               ))}
             </div>
           )}
@@ -46,13 +53,26 @@ export default async function ProviderPage({
 
       <div className="grid lg:grid-cols-12 gap-10 mt-8">
         <div className="lg:col-span-7">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            {provider.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={provider.logoUrl}
+                alt=""
+                className="size-14 rounded-lg object-cover border border-line shrink-0"
+              />
+            )}
             <div>
               <h1 className="text-display">{provider.name}</h1>
               <p className="text-eyebrow mt-2">
                 {provider.city} · {provider.distanceKm} km · {provider.rating.toFixed(1)} uit{" "}
                 {provider.reviewCount} reviews
               </p>
+              {(provider.address || provider.postalCode) && (
+                <p className="text-[0.875rem] text-muted mt-1">
+                  {[provider.address, provider.postalCode, provider.city].filter(Boolean).join(", ")}
+                </p>
+              )}
             </div>
           </div>
 
