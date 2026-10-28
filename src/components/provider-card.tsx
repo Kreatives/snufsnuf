@@ -79,7 +79,11 @@ export async function ProviderCard({ provider }: { provider: Provider }) {
           </div>
         </div>
 
-        <Link href={`/aanbieder/${provider.slug}`} className="btn btn-primary w-full">
+        <Link
+          href={`/aanbieder/${provider.slug}`}
+          className="inline-flex items-center justify-center h-11 w-full rounded-xl font-semibold text-[0.9375rem] text-white transition-transform hover:-translate-y-0.5"
+          style={{ background: "#C84E38" }}
+        >
           Bekijk en boek
         </Link>
       </div>

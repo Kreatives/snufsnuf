@@ -11,7 +11,7 @@ export function SiteHeader({ user }: { user: CurrentUser | null }) {
   if (pathname.startsWith("/dashboard")) return null;
 
   return (
-    <header className="border-b border-line bg-bg/80 backdrop-blur sticky top-0 z-20">
+    <header className="border-b border-line bg-white/90 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto max-w-[1200px] px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center" aria-label="Snuf Snuf">
           {/* eslint-disable-next-line @next/next/no-img-element */}
