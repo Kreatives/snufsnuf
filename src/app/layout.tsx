@@ -14,12 +14,16 @@ export const metadata: Metadata = {
   title: "Snufsnuf — boeken voor dierenzorg",
   description:
     "De boekingslaag voor dierenzorg in Nederland. Gematcht op wat je dier nodig heeft, niet op wie bovenaan staat.",
+  icons: { icon: "/brand/icon-green.svg" },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await getCurrentUser();
   return (
     <html lang="nl" className={`${interTight.variable} h-full`}>
+      <head>
+        <link rel="stylesheet" href="https://use.typekit.net/gor7ynm.css" />
+      </head>
       <body className="min-h-full flex flex-col">
         <SiteHeader user={user} />
         <div className="flex-1">{children}</div>

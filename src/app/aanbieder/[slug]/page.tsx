@@ -19,7 +19,7 @@ export default async function ProviderPage({
 
   return (
     <main className="mx-auto max-w-[1200px] px-6 py-10">
-      <Link href="/" className="text-[0.9375rem] text-muted hover:text-ink transition-colors">
+      <Link href="/zoeken" className="text-[0.9375rem] text-muted hover:text-ink transition-colors">
         ← Terug naar zoeken
       </Link>
 

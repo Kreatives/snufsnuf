@@ -19,6 +19,24 @@ html {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Rucksack (Typekit) — alleen voor marketing-koppen, niet in de app-UI */
+.font-display {
+  font-family: "rucksack", var(--font-sans);
+  font-weight: 700;
+}
+
+@keyframes ss-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ss-pop {
+  animation: ss-pop 0.28s ease both;
+}
+@keyframes ss-blink {
+  0%, 60%, 100% { opacity: 0.25; }
+  30% { opacity: 1; }
+}
+
 body {
   background: var(--color-bg);
   color: var(--color-ink);

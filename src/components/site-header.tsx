@@ -13,12 +13,12 @@ export function SiteHeader({ user }: { user: CurrentUser | null }) {
   return (
     <header className="border-b border-line bg-bg/80 backdrop-blur sticky top-0 z-20">
       <div className="mx-auto max-w-[1200px] px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="media-ph size-8 rounded-lg" aria-hidden />
-          <span className="font-semibold text-[1.125rem] tracking-tight">Snufsnuf</span>
+        <Link href="/" className="flex items-center" aria-label="Snuf Snuf">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/horizontal-green.svg" alt="Snuf Snuf" className="h-7 w-auto" />
         </Link>
         <nav className="flex items-center gap-6 text-[0.9375rem]">
-          <Link href="/" className="text-muted hover:text-ink transition-colors">
+          <Link href="/zoeken" className="text-muted hover:text-ink transition-colors">
             Zoeken
           </Link>
           {user ? (
