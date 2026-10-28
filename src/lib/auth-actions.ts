@@ -139,8 +139,9 @@ export async function createProviderAction(
   const baseSlug = slugify(name) || "salon";
 
   // Probeer een nette slug; bij botsing een korte suffix.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const slug = attempt === 0 ? baseSlug : `${baseSlug}-${user!.id.slice(0, 4)}`;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const slug =
+      attempt === 0 ? baseSlug : `${baseSlug}-${user!.id.slice(0, 4)}${attempt > 1 ? `-${attempt}` : ""}`;
     const { data, error } = await supabase
       .from("providers")
       .insert({
