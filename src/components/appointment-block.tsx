@@ -1,16 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { AgendaItem } from "@/lib/data";
+import type { AppointmentStatus, Slot } from "@/lib/types";
 import { SIZE_LABELS, COAT_LABELS, euro, formatDuration } from "@/lib/pricing";
 import { setAppointmentStatusAction } from "@/lib/provider-actions";
-import {
-  cancelAppointmentAction,
-  deleteAppointmentAction,
-  rescheduleAppointmentAction,
-} from "@/lib/appointment-actions";
-import type { AppointmentStatus } from "@/lib/types";
-import type { ActionState } from "@/lib/auth-actions";
+import { cancelAppointmentAction, deleteAppointmentAction } from "@/lib/appointment-actions";
+import { RescheduleControl } from "@/components/reschedule-control";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   aanvraag: "Aanvraag",
@@ -34,10 +30,12 @@ export function AppointmentBlock({
   item,
   top,
   height,
+  rescheduleSlots,
 }: {
   item: AgendaItem;
   top: number;
   height: number;
+  rescheduleSlots: Slot[];
 }) {
   const [open, setOpen] = useState(false);
   const alert = item.muzzle || item.biteRisk >= 2;
@@ -63,12 +61,26 @@ export function AppointmentBlock({
         <p className="text-[0.75rem] text-muted truncate">{item.title}</p>
         {alert && <span className="chip chip-alert mt-1 h-5 text-[0.6875rem]">Muilkorf</span>}
       </button>
-      {open && <AppointmentModal item={item} onClose={() => setOpen(false)} />}
+      {open && (
+        <AppointmentModal
+          item={item}
+          rescheduleSlots={rescheduleSlots}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </>
   );
 }
 
-function AppointmentModal({ item, onClose }: { item: AgendaItem; onClose: () => void }) {
+function AppointmentModal({
+  item,
+  rescheduleSlots,
+  onClose,
+}: {
+  item: AgendaItem;
+  rescheduleSlots: Slot[];
+  onClose: () => void;
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -117,7 +129,7 @@ function AppointmentModal({ item, onClose }: { item: AgendaItem; onClose: () => 
             <p className="text-[0.9375rem] text-muted">{item.title || "Geblokkeerd in de agenda."}</p>
           ) : (
             <>
-          <ProviderActions item={item} onDone={onClose} />
+          <ProviderActions item={item} rescheduleSlots={rescheduleSlots} onDone={onClose} />
 
           {item.topNote && (
             <p className="text-[0.9375rem] rounded-md border border-line-strong bg-bg px-3 py-2">
@@ -193,12 +205,16 @@ function AppointmentModal({ item, onClose }: { item: AgendaItem; onClose: () => 
   );
 }
 
-function ProviderActions({ item, onDone }: { item: AgendaItem; onDone: () => void }) {
+function ProviderActions({
+  item,
+  rescheduleSlots,
+  onDone,
+}: {
+  item: AgendaItem;
+  rescheduleSlots: Slot[];
+  onDone: () => void;
+}) {
   const [moving, setMoving] = useState(false);
-  const [state, action, pending] = useActionState<ActionState, FormData>(
-    rescheduleAppointmentAction,
-    {},
-  );
 
   const statusBtn = (status: AppointmentStatus, label: string, solid?: boolean) => (
     <form action={setAppointmentStatusAction} onSubmit={() => setTimeout(onDone, 50)}>
@@ -249,18 +265,7 @@ function ProviderActions({ item, onDone }: { item: AgendaItem; onDone: () => voi
       </div>
 
       {moving && (
-        <form action={action} className="flex flex-col gap-2 rounded-md border border-line p-3">
-          <input type="hidden" name="id" value={item.id} />
-          <div className="flex gap-2">
-            <input name="date" type="date" className="field-input h-10" defaultValue={item.dateISO} required />
-            <input name="time" type="time" className="field-input h-10" defaultValue={item.time} required />
-            <button type="submit" className="btn btn-primary h-10 px-4" disabled={pending}>
-              {pending ? "…" : "Opslaan"}
-            </button>
-          </div>
-          {state.error && <p className="chip chip-alert w-fit">{state.error}</p>}
-          {state.success && <p className="chip w-fit">Verplaatst.</p>}
-        </form>
+        <RescheduleControl id={item.id} slots={rescheduleSlots} onDone={onDone} />
       )}
     </div>
   );

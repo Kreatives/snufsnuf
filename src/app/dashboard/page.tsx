@@ -4,9 +4,11 @@ import { getCurrentUser } from "@/lib/session";
 import {
   getOwnedProvider,
   getProviderHours,
+  getProviderExceptions,
   getServicesByProvider,
   getAgendaItems,
 } from "@/lib/data";
+import { getAvailableSlots } from "@/lib/availability";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { WeekAgenda } from "@/components/week-agenda";
 import { ManualEntryForm } from "@/components/manual-entry-form";
@@ -46,7 +48,13 @@ export default async function DashboardPage({
     const dt = new Date(monday);
     dt.setDate(monday.getDate() + i);
     const iso = dt.toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
-    return { iso, short: SHORT[i], dayNum: Number(iso.slice(8, 10)), isToday: iso === todayISO };
+    return {
+      iso,
+      short: SHORT[i],
+      dayNum: Number(iso.slice(8, 10)),
+      isToday: iso === todayISO,
+      weekday: new Date(`${iso}T12:00:00Z`).getUTCDay(),
+    };
   });
 
   const rangeStart = new Date(monday);
@@ -54,21 +62,20 @@ export default async function DashboardPage({
   const rangeEnd = new Date(rangeStart);
   rangeEnd.setDate(rangeStart.getDate() + 7);
 
-  const [hours, services, items] = await Promise.all([
+  const [hourRows, exceptionRows, services, items, rescheduleSlots] = await Promise.all([
     getProviderHours(provider.id),
+    getProviderExceptions(provider.id),
     getServicesByProvider(provider.id),
     getAgendaItems(provider.id, rangeStart, rangeEnd),
+    getAvailableSlots(provider.id, { days: 30 }),
   ]);
 
-  // Rasterranden: openingstijden, verbreed met eventuele afspraken erbuiten
-  let minOpen = hours.length ? Math.min(...hours.map((h) => toMin(h.open_time))) : 8 * 60;
-  let maxClose = hours.length ? Math.max(...hours.map((h) => toMin(h.close_time))) : 18 * 60;
-  for (const it of items) {
-    minOpen = Math.min(minOpen, it.startMin);
-    maxClose = Math.max(maxClose, it.startMin + it.durationMin);
+  const hours: Record<number, { open: number; close: number }> = {};
+  for (const h of hourRows) {
+    hours[h.weekday] = { open: toMin(h.open_time), close: toMin(h.close_time) };
   }
-  const startHour = Math.max(0, Math.floor(minOpen / 60));
-  const endHour = Math.min(24, Math.max(startHour + 1, Math.ceil(maxClose / 60)));
+  const exceptions: Record<string, string> = {};
+  for (const e of exceptionRows) exceptions[e.date] = e.reason;
 
   const rangeLabel = `${new Date(days[0].iso).toLocaleDateString("nl-NL", {
     day: "numeric",
@@ -126,7 +133,13 @@ export default async function DashboardPage({
         <ManualEntryForm />
       </div>
 
-      <WeekAgenda days={days} items={items} startHour={startHour} endHour={endHour} />
+      <WeekAgenda
+        days={days}
+        items={items}
+        rescheduleSlots={rescheduleSlots}
+        hours={hours}
+        exceptions={exceptions}
+      />
 
       {items.length === 0 && (
         <p className="text-[0.9375rem] text-muted mt-4">

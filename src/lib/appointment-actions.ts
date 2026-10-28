@@ -24,6 +24,7 @@ interface ApptRow {
   duration_min: number;
   status: string;
   starts_at: string;
+  price_cents: number;
 }
 
 /** Laadt de afspraak en bepaalt of de ingelogde gebruiker 'm mag beheren. */
@@ -38,7 +39,7 @@ async function authorize(
 
   const { data } = await supabase
     .from("appointments")
-    .select("id, provider_id, owner_user_id, duration_min, status, starts_at")
+    .select("id, provider_id, owner_user_id, duration_min, status, starts_at, price_cents")
     .eq("id", id)
     .maybeSingle();
   if (!data) return null;
@@ -150,11 +151,30 @@ export async function rescheduleAppointmentAction(
   );
   if (problem) return { error: problem };
 
-  const startsAt = `${date}T${time}:00${amsterdamOffset(date)}`;
-  const { error } = await supabase
-    .from("appointments")
-    .update({ starts_at: startsAt, provider_moved: auth.isProvider })
-    .eq("id", id);
+  // Verzetbeleid van de salon (geldt alleen voor de baasje, niet voor de salon zelf).
+  const update: Record<string, unknown> = {
+    starts_at: `${date}T${time}:00${amsterdamOffset(date)}`,
+    provider_moved: auth.isProvider,
+  };
+  if (!auth.isProvider) {
+    const { data: prov } = await supabase
+      .from("providers")
+      .select("reschedule_min_hours, reschedule_fee_cents")
+      .eq("id", auth.appt.provider_id)
+      .maybeSingle();
+    const policy = prov as { reschedule_min_hours: number; reschedule_fee_cents: number } | null;
+    const minHours = policy?.reschedule_min_hours ?? 0;
+    const feeCents = policy?.reschedule_fee_cents ?? 0;
+    const hoursUntil = (Date.parse(auth.appt.starts_at) - Date.now()) / 3_600_000;
+    if (minHours > 0 && hoursUntil < minHours) {
+      if (feeCents <= 0) {
+        return { error: `Verplaatsen kan tot ${minHours} uur van tevoren.` };
+      }
+      update.price_cents = auth.appt.price_cents + feeCents;
+    }
+  }
+
+  const { error } = await supabase.from("appointments").update(update).eq("id", id);
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard");

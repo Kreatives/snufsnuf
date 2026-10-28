@@ -256,6 +256,27 @@ export async function addExceptionAction(
   return { success: true };
 }
 
+export async function updateReschedulePolicyAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) redirect("/inloggen");
+
+  const minHours = Math.max(0, numOf(formData.get("min_hours")));
+  const feeCents = Math.max(0, centsOf(formData.get("fee")));
+
+  const { error } = await supabase
+    .from("providers")
+    .update({ reschedule_min_hours: minHours, reschedule_fee_cents: feeCents })
+    .eq("id", providerId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/openingstijden");
+  return { success: true };
+}
+
 export async function removeExceptionAction(formData: FormData) {
   const supabase = await createClient(await cookies());
   const id = String(formData.get("id") || "");

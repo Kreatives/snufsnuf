@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getMyAppointments, type MyAppointment } from "@/lib/data";
 import { euro, formatDuration } from "@/lib/pricing";
+import { getAvailableSlots } from "@/lib/availability";
 import { ConsumerAppointmentActions } from "@/components/appointment-actions-consumer";
-import type { AppointmentStatus } from "@/lib/types";
+import type { AppointmentStatus, Slot } from "@/lib/types";
 
 const STATUS_LABEL: Record<AppointmentStatus, string> = {
   aanvraag: "Aanvraag",
@@ -18,7 +19,7 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
   geannuleerd: "Geannuleerd",
 };
 
-function Card({ a }: { a: MyAppointment }) {
+function Card({ a, slots }: { a: MyAppointment; slots: Slot[] }) {
   const canManage = !a.isPast && a.status !== "geannuleerd";
   return (
     <article className="card p-5">
@@ -49,7 +50,7 @@ function Card({ a }: { a: MyAppointment }) {
         <p className="chip chip-alert w-fit mt-3">Let op: deze afspraak is verplaatst door de salon</p>
       )}
 
-      {canManage && <ConsumerAppointmentActions id={a.id} dateISO={a.dateISO} time24={a.time24} />}
+      {canManage && <ConsumerAppointmentActions id={a.id} slots={slots} />}
     </article>
   );
 }
@@ -62,6 +63,14 @@ export default async function MijnAfsprakenPage() {
   const all = await getMyAppointments();
   const upcoming = all.filter((a) => !a.isPast).reverse();
   const past = all.filter((a) => a.isPast);
+
+  // Vrije momenten per aanbieder ophalen, voor het verzetten.
+  const providerIds = [...new Set(upcoming.map((a) => a.providerId))];
+  const slotLists = await Promise.all(
+    providerIds.map((pid) => getAvailableSlots(pid, { days: 30 })),
+  );
+  const slotsByProvider: Record<string, Slot[]> = {};
+  providerIds.forEach((pid, i) => (slotsByProvider[pid] = slotLists[i]));
 
   return (
     <main className="mx-auto max-w-[760px] px-6 py-14">
@@ -86,7 +95,7 @@ export default async function MijnAfsprakenPage() {
           <h2 className="text-h3 mb-3">Komend</h2>
           <div className="flex flex-col gap-3">
             {upcoming.map((a) => (
-              <Card key={a.id} a={a} />
+              <Card key={a.id} a={a} slots={slotsByProvider[a.providerId] ?? []} />
             ))}
           </div>
         </section>
@@ -97,7 +106,7 @@ export default async function MijnAfsprakenPage() {
           <h2 className="text-h3 mb-3">Geweest</h2>
           <div className="flex flex-col gap-3 opacity-80">
             {past.map((a) => (
-              <Card key={a.id} a={a} />
+              <Card key={a.id} a={a} slots={[]} />
             ))}
           </div>
         </section>

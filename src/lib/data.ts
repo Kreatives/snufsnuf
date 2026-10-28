@@ -30,6 +30,8 @@ type ProviderRow = {
   skills: Provider["skills"];
   prikkelarm: boolean;
   mobiel: boolean;
+  reschedule_min_hours: number;
+  reschedule_fee_cents: number;
 };
 
 function mapProvider(r: ProviderRow): Provider {
@@ -48,6 +50,8 @@ function mapProvider(r: ProviderRow): Provider {
     skills: r.skills,
     prikkelarm: r.prikkelarm,
     mobiel: r.mobiel,
+    rescheduleMinHours: r.reschedule_min_hours ?? 0,
+    rescheduleFeeCents: r.reschedule_fee_cents ?? 0,
   };
 }
 
@@ -187,6 +191,7 @@ export interface MyAppointment {
   status: AppointmentStatus;
   serviceName: string;
   animalName: string;
+  providerId: string;
   providerName: string;
   providerSlug: string;
   isPast: boolean;
@@ -213,6 +218,7 @@ export async function getMyAppointments(): Promise<MyAppointment[]> {
   const now = Date.now();
   type Row = {
     id: string;
+    provider_id: string;
     starts_at: string;
     ends_at: string | null;
     duration_min: number;
@@ -251,6 +257,7 @@ export async function getMyAppointments(): Promise<MyAppointment[]> {
       status: r.status,
       serviceName: r.service_name,
       animalName: r.animal?.name ?? "",
+      providerId: r.provider_id,
       providerName: r.providers?.name ?? "",
       providerSlug: r.providers?.slug ?? "",
       isPast: Date.parse(r.starts_at) < now,

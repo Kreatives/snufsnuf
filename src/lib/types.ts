@@ -85,6 +85,8 @@ export interface Provider {
   skills: Skill[];
   prikkelarm: boolean;
   mobiel: boolean;
+  rescheduleMinHours: number;
+  rescheduleFeeCents: number;
 }
 
 export interface Animal {

@@ -4,6 +4,7 @@ import { getOwnedProvider, getProviderHours, getProviderExceptions } from "@/lib
 import { DashboardNav } from "@/components/dashboard-nav";
 import { HoursForm } from "@/components/hours-form";
 import { ExceptionsManager } from "@/components/exceptions-manager";
+import { ReschedulePolicyForm } from "@/components/reschedule-policy-form";
 
 export default async function OpeningstijdenPage() {
   const user = await getCurrentUser();
@@ -27,6 +28,10 @@ export default async function OpeningstijdenPage() {
       <div className="flex flex-col gap-6">
         <HoursForm existing={hours} />
         <ExceptionsManager existing={exceptions} />
+        <ReschedulePolicyForm
+          minHours={provider.rescheduleMinHours}
+          feeCents={provider.rescheduleFeeCents}
+        />
       </div>
     </main>
   );

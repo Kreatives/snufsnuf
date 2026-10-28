@@ -1,26 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import {
-  cancelAppointmentAction,
-  rescheduleAppointmentAction,
-} from "@/lib/appointment-actions";
-import type { ActionState } from "@/lib/auth-actions";
+import { useState } from "react";
+import type { Slot } from "@/lib/types";
+import { cancelAppointmentAction } from "@/lib/appointment-actions";
+import { RescheduleControl } from "@/components/reschedule-control";
 
-export function ConsumerAppointmentActions({
-  id,
-  dateISO,
-  time24,
-}: {
-  id: string;
-  dateISO: string;
-  time24: string;
-}) {
+export function ConsumerAppointmentActions({ id, slots }: { id: string; slots: Slot[] }) {
   const [moving, setMoving] = useState(false);
-  const [state, action, pending] = useActionState<ActionState, FormData>(
-    rescheduleAppointmentAction,
-    {},
-  );
 
   return (
     <div className="mt-3 flex flex-col gap-2">
@@ -40,18 +26,7 @@ export function ConsumerAppointmentActions({
         </form>
       </div>
 
-      {moving && (
-        <form action={action} className="flex flex-wrap gap-2 items-center rounded-md border border-line p-3">
-          <input type="hidden" name="id" value={id} />
-          <input name="date" type="date" className="field-input h-10 w-40" defaultValue={dateISO} required />
-          <input name="time" type="time" className="field-input h-10 w-28" defaultValue={time24} required />
-          <button type="submit" className="btn btn-primary h-10 px-4" disabled={pending}>
-            {pending ? "…" : "Opslaan"}
-          </button>
-          {state.error && <p className="chip chip-alert w-full">{state.error}</p>}
-          {state.success && <p className="chip w-fit">Verzet.</p>}
-        </form>
-      )}
+      {moving && <RescheduleControl id={id} slots={slots} onDone={() => setMoving(false)} />}
     </div>
   );
 }
