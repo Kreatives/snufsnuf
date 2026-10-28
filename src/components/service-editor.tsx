@@ -18,6 +18,21 @@ interface AddonRow {
   dur: string;
   perUnit: boolean;
 }
+interface PackageRow {
+  nights: string;
+  price: string;
+}
+
+const OPPAS_TYPES = [
+  "Hondenoppas",
+  "Kattenoppas",
+  "Hondenopvang",
+  "Kattenopvang",
+  "Hondenpension",
+  "Kattenpension",
+  "Konijnenoppas",
+  "Knaagdieropvang",
+];
 
 export function ServiceEditor({ initial }: { initial?: Service }) {
   const action = initial ? updateServiceAction : createServiceAction;
@@ -43,6 +58,25 @@ export function ServiceEditor({ initial }: { initial?: Service }) {
         }))
       : [{ name: "", price: "", dur: "", perUnit: false }],
   );
+  const [packages, setPackages] = useState<PackageRow[]>(
+    initial?.packages.length
+      ? initial.packages.map((p) => ({ nights: String(p.nights), price: eur(p.priceCents) }))
+      : [],
+  );
+
+  // Live melding: een pakket met meer nachten mag niet goedkoper zijn.
+  const packageWarning = (() => {
+    const rows = packages
+      .map((p) => ({ n: Number(p.nights), c: Number(p.price.replace(",", ".")) }))
+      .filter((r) => r.n > 0 && r.c > 0)
+      .sort((a, b) => a.n - b.n);
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].c <= rows[i - 1].c) {
+        return `Een pakket van ${rows[i].n} nachten (€${rows[i].c}) mag niet goedkoper zijn dan ${rows[i - 1].n} nachten (€${rows[i - 1].c}).`;
+      }
+    }
+    return null;
+  })();
 
   return (
     <form action={formAction} className="card p-6 flex flex-col gap-6">
@@ -52,16 +86,37 @@ export function ServiceEditor({ initial }: { initial?: Service }) {
       <input type="hidden" name="variant_count" value={!isOppas && hasVariants ? variants.length : 0} />
       <input type="hidden" name="addon_count" value={hasAddons ? addons.length : 0} />
       <input type="hidden" name="oppas_unit" value={oppasUnit} />
+      <input type="hidden" name="pkg_count" value={isOppas && oppasUnit === "nacht" ? packages.length : 0} />
 
       {/* Basis */}
       <div className="flex flex-col gap-4">
         <p className="text-eyebrow">Basis</p>
-        <div>
-          <label className="field-label" htmlFor="name">
-            Naam
-          </label>
-          <input id="name" name="name" className="field-input" defaultValue={initial?.name} required />
-        </div>
+        {isOppas ? (
+          <div>
+            <label className="field-label" htmlFor="name">
+              Soort oppasdienst
+            </label>
+            <select
+              id="name"
+              name="name"
+              className="field-input"
+              defaultValue={initial && OPPAS_TYPES.includes(initial.name) ? initial.name : OPPAS_TYPES[0]}
+            >
+              {OPPAS_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div>
+            <label className="field-label" htmlFor="name">
+              Naam
+            </label>
+            <input id="name" name="name" className="field-input" defaultValue={initial?.name} required />
+          </div>
+        )}
         <div>
           <label className="field-label" htmlFor="description">
             Omschrijving
@@ -132,6 +187,47 @@ export function ServiceEditor({ initial }: { initial?: Service }) {
                 </div>
               )}
             </div>
+
+            {oppasUnit === "nacht" && (
+              <div className="flex flex-col gap-2 border-t border-line pt-3">
+                <p className="field-label">Pakketten (optioneel)</p>
+                <p className="text-[0.8125rem] text-muted">
+                  Een vaste totaalprijs voor een aantal nachten, bijvoorbeeld 2 nachten voor €90.
+                  Voor andere aantallen geldt het tarief per nacht.
+                </p>
+                {packages.map((p, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-3 items-center">
+                    <input
+                      className="field-input h-10"
+                      inputMode="numeric"
+                      placeholder="Aantal nachten"
+                      name={`pkg_nights_${i}`}
+                      value={p.nights}
+                      onChange={(e) =>
+                        setPackages((rows) => rows.map((r, j) => (j === i ? { ...r, nights: e.target.value } : r)))
+                      }
+                    />
+                    <input
+                      className="field-input h-10"
+                      inputMode="decimal"
+                      placeholder="Totaalprijs (€)"
+                      name={`pkg_price_${i}`}
+                      value={p.price}
+                      onChange={(e) =>
+                        setPackages((rows) => rows.map((r, j) => (j === i ? { ...r, price: e.target.value } : r)))
+                      }
+                    />
+                    <RemoveBtn onClick={() => setPackages((r) => r.filter((_, j) => j !== i))} />
+                  </div>
+                ))}
+                {packageWarning && <p className="chip chip-alert w-fit">{packageWarning}</p>}
+                <AddBtn
+                  label="Pakket toevoegen"
+                  onClick={() => setPackages((r) => [...r, { nights: "", price: "" }])}
+                />
+              </div>
+            )}
+
             <p className="text-[0.8125rem] text-muted">
               De klant kiest straks gewoon het huisdier en een afhaal- en ophaalmoment.
             </p>
@@ -307,7 +403,7 @@ export function ServiceEditor({ initial }: { initial?: Service }) {
       {state.error && <p className="chip chip-alert w-fit">{state.error}</p>}
       {state.success && <p className="chip w-fit">{initial ? "Opgeslagen." : "Product toegevoegd."}</p>}
 
-      <button type="submit" className="btn btn-primary w-fit" disabled={pending}>
+      <button type="submit" className="btn btn-primary w-fit" disabled={pending || !!packageWarning}>
         {pending ? "Bezig…" : initial ? "Wijzigingen opslaan" : "Product opslaan"}
       </button>
     </form>

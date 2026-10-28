@@ -71,6 +71,7 @@ type ServiceRow = {
   per_night: boolean;
   min_nights: number;
   per_hour: boolean;
+  packages: Service["packages"];
   required_skills: Service["requiredSkills"];
   buffer_min: number;
 };
@@ -92,6 +93,7 @@ function mapService(r: ServiceRow): Service {
     perNight: r.per_night ?? false,
     minNights: r.min_nights ?? 1,
     perHour: r.per_hour ?? false,
+    packages: r.packages ?? [],
     requiredSkills: r.required_skills ?? [],
     bufferMin: r.buffer_min ?? 0,
   };

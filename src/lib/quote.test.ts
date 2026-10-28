@@ -19,6 +19,7 @@ function service(overrides: Partial<Service> = {}): Service {
     perNight: false,
     minNights: 1,
     perHour: false,
+    packages: [],
     requiredSkills: [],
     bufferMin: 0,
     ...overrides,
@@ -160,6 +161,35 @@ describe("calculateQuote", () => {
     );
     expect(q.totalCents).toBe(10000);
     expect(q.breakdown[0].label).toBe("Per nacht × 4 nachten");
+  });
+
+  it("per-nacht pakket overschrijft het per-nacht-tarief", () => {
+    const q = calculateQuote(
+      service({
+        basePriceCents: 5000,
+        baseDurationMin: 0,
+        perNight: true,
+        packages: [{ nights: 2, priceCents: 9000 }],
+      }),
+      {},
+      { nights: 2 },
+    );
+    expect(q.totalCents).toBe(9000);
+    expect(q.breakdown[0].label).toBe("Pakket · 2 nachten");
+  });
+
+  it("zonder passend pakket valt het terug op het per-nacht-tarief", () => {
+    const q = calculateQuote(
+      service({
+        basePriceCents: 5000,
+        baseDurationMin: 0,
+        perNight: true,
+        packages: [{ nights: 2, priceCents: 9000 }],
+      }),
+      {},
+      { nights: 3 },
+    );
+    expect(q.totalCents).toBe(15000);
   });
 
   it("per-uur oppas vermenigvuldigt met het aantal uren", () => {

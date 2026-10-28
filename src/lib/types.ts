@@ -68,6 +68,8 @@ export interface Service {
   minNights: number;
   /** oppas per uur: basisprijs geldt per uur, boeking kiest afhaal- en ophaaltijd */
   perHour: boolean;
+  /** staffels voor per-nacht oppas: totaalprijs per aantal nachten (bijv. 2 nachten = €90) */
+  packages: { nights: number; priceCents: number }[];
   requiredSkills: Skill[];
   bufferMin: number;
 }

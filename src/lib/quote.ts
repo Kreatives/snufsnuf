@@ -99,18 +99,32 @@ export function calculateQuote(
   const unitPrice = variant ? variant.priceCents : service.basePriceCents;
   const unitDuration = variant ? variant.durationMin : service.baseDurationMin;
 
-  let units = 1;
-  let baseLabel = variant ? variant.name : "Basis";
+  let totalCents: number;
+  let durationMin: number;
+  let baseLabel: string;
+
   if (service.perNight) {
-    units = Math.max(selection.nights ?? service.minNights, service.minNights, 1);
-    baseLabel = `${variant ? variant.name : "Per nacht"} × ${units} ${units === 1 ? "nacht" : "nachten"}`;
+    const units = Math.max(selection.nights ?? service.minNights, service.minNights, 1);
+    const pkg = service.packages.find((p) => p.nights === units);
+    if (pkg) {
+      totalCents = pkg.priceCents;
+      baseLabel = `Pakket · ${units} ${units === 1 ? "nacht" : "nachten"}`;
+    } else {
+      totalCents = unitPrice * units;
+      baseLabel = `${variant ? variant.name : "Per nacht"} × ${units} ${units === 1 ? "nacht" : "nachten"}`;
+    }
+    durationMin = unitDuration * units;
   } else if (service.perHour) {
-    units = Math.max(1, Math.round(selection.hours ?? 1));
+    const units = Math.max(1, Math.round(selection.hours ?? 1));
+    totalCents = unitPrice * units;
+    durationMin = units * 60;
     baseLabel = `Per uur × ${units} uur`;
+  } else {
+    totalCents = unitPrice;
+    durationMin = unitDuration;
+    baseLabel = variant ? variant.name : "Basis";
   }
 
-  let totalCents = unitPrice * units;
-  let durationMin = service.perHour ? units * 60 : unitDuration * units;
   breakdown.push({
     label: baseLabel,
     deltaPriceCents: totalCents,

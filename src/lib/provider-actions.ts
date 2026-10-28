@@ -76,6 +76,7 @@ interface ServicePayload {
   per_night: boolean;
   per_hour: boolean;
   min_nights: number;
+  packages: { nights: number; priceCents: number }[];
 }
 
 function parseServiceForm(formData: FormData): { error?: string; payload?: ServicePayload } {
@@ -108,6 +109,27 @@ function parseServiceForm(formData: FormData): { error?: string; payload?: Servi
   if (isOppas) {
     const base = centsOf(formData.get("base_price"));
     if (!(base > 0)) return { error: "Vul een tarief in." };
+
+    const packages: { nights: number; priceCents: number }[] = [];
+    if (oppasUnit === "nacht") {
+      for (let i = 0; i < numOf(formData.get("pkg_count")); i++) {
+        const nights = numOf(formData.get(`pkg_nights_${i}`));
+        const price = centsOf(formData.get(`pkg_price_${i}`));
+        if (nights > 0 && price > 0) packages.push({ nights, priceCents: price });
+      }
+      packages.sort((a, b) => a.nights - b.nights);
+      for (let i = 1; i < packages.length; i++) {
+        if (packages[i].nights === packages[i - 1].nights) {
+          return { error: `Je hebt twee pakketten met ${packages[i].nights} nachten.` };
+        }
+        if (packages[i].priceCents <= packages[i - 1].priceCents) {
+          return {
+            error: `Een pakket van ${packages[i].nights} nachten mag niet goedkoper zijn dan een pakket van ${packages[i - 1].nights} nachten.`,
+          };
+        }
+      }
+    }
+
     return {
       payload: {
         species,
@@ -121,6 +143,7 @@ function parseServiceForm(formData: FormData): { error?: string; payload?: Servi
         per_night: oppasUnit === "nacht",
         per_hour: oppasUnit === "uur",
         min_nights: minNights,
+        packages,
       },
     };
   }
@@ -168,6 +191,7 @@ function parseServiceForm(formData: FormData): { error?: string; payload?: Servi
       per_night: false,
       per_hour: false,
       min_nights: minNights,
+      packages: [],
     },
   };
 }
