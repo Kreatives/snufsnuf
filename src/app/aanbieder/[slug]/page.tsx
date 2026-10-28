@@ -24,31 +24,29 @@ export default async function ProviderPage({
       </Link>
 
       {provider.photos.length > 0 ? (
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-2 sm:h-[400px]">
+        <div className="mt-5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={provider.photos[0]}
             alt={provider.name}
-            className="w-full h-[240px] sm:h-full object-cover rounded-lg"
+            className="w-full h-[240px] sm:h-[360px] object-cover rounded-lg"
           />
           {provider.photos.length > 1 && (
-            <div className="hidden sm:grid grid-rows-2 gap-2">
-              {provider.photos.slice(1, 3).map((p) => (
+            <div className="mt-2 grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {provider.photos.slice(1).map((p) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={p}
                   src={p}
                   alt=""
-                  className={`w-full object-cover rounded-lg h-full ${
-                    provider.photos.length === 2 ? "row-span-2" : ""
-                  }`}
+                  className="w-full h-[88px] sm:h-[110px] object-cover rounded-lg"
                 />
               ))}
             </div>
           )}
         </div>
       ) : (
-        <div className="media-ph aspect-[21/9] rounded-lg mt-5" aria-hidden />
+        <div className="media-ph h-[240px] sm:h-[360px] rounded-lg mt-5" aria-hidden />
       )}
 
       <div className="grid lg:grid-cols-12 gap-10 mt-8">
