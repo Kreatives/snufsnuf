@@ -1,9 +1,14 @@
-import Link from "next/link";
-import { getCurrentUser } from "@/lib/session";
-import { logoutAction } from "@/lib/auth-actions";
+"use client";
 
-export async function SiteHeader() {
-  const user = await getCurrentUser();
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { logoutAction } from "@/lib/auth-actions";
+import type { CurrentUser } from "@/lib/session";
+
+export function SiteHeader({ user }: { user: CurrentUser | null }) {
+  const pathname = usePathname();
+  // Op het dashboard is er een eigen zijbalk, dus geen globale header.
+  if (pathname.startsWith("/dashboard")) return null;
 
   return (
     <header className="border-b border-line bg-bg/80 backdrop-blur sticky top-0 z-20">
@@ -33,11 +38,11 @@ export async function SiteHeader() {
                   >
                     Afspraken
                   </Link>
+                  <Link href="/mijn-account" className="text-muted hover:text-ink transition-colors">
+                    Account
+                  </Link>
                 </>
               )}
-              <Link href="/mijn-account" className="text-muted hover:text-ink transition-colors">
-                Account
-              </Link>
               <form action={logoutAction}>
                 <button type="submit" className="btn btn-ghost h-9 px-4">
                   Uitloggen

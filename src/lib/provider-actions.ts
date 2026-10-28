@@ -27,10 +27,59 @@ async function ownerProviderId(supabase: SupabaseClient): Promise<string | null>
   if (!user) return null;
   const { data } = await supabase
     .from("providers")
-    .select("id")
+    .select("id, created_at")
     .eq("owner_user_id", user.id)
-    .maybeSingle();
-  return (data as { id: string } | null)?.id ?? null;
+    .order("created_at", { ascending: true });
+  const rows = (data as { id: string }[] | null) ?? [];
+  if (rows.length === 0) return null;
+  const cookieStore = await cookies();
+  const activeId = cookieStore.get("active_salon")?.value;
+  return rows.find((r) => r.id === activeId)?.id ?? rows[0].id;
+}
+
+/* ── Actieve salon kiezen ────────────────────────────────────────────────── */
+export async function setActiveSalonAction(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  if (!id) return;
+  const cookieStore = await cookies();
+  cookieStore.set("active_salon", id, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+  redirect("/dashboard");
+}
+
+/* ── Foto's ──────────────────────────────────────────────────────────────── */
+export async function updateLogoAction(formData: FormData) {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) return;
+  const url = String(formData.get("url") || "");
+  await supabase.from("providers").update({ logo_url: url || null }).eq("id", providerId);
+  revalidatePath("/dashboard/salon");
+  revalidatePath("/");
+}
+
+export async function addPhotoAction(formData: FormData) {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) return;
+  const url = String(formData.get("url") || "");
+  if (!url) return;
+  const { data } = await supabase.from("providers").select("photos").eq("id", providerId).maybeSingle();
+  const photos = ((data as { photos: string[] } | null)?.photos ?? []).concat(url);
+  await supabase.from("providers").update({ photos }).eq("id", providerId);
+  revalidatePath("/dashboard/salon");
+  revalidatePath("/");
+}
+
+export async function removePhotoAction(formData: FormData) {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) return;
+  const url = String(formData.get("url") || "");
+  const { data } = await supabase.from("providers").select("photos").eq("id", providerId).maybeSingle();
+  const photos = ((data as { photos: string[] } | null)?.photos ?? []).filter((p) => p !== url);
+  await supabase.from("providers").update({ photos }).eq("id", providerId);
+  revalidatePath("/dashboard/salon");
+  revalidatePath("/");
 }
 
 /* ── Openingstijden opslaan ──────────────────────────────────────────────── */

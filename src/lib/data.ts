@@ -36,6 +36,8 @@ type ProviderRow = {
   phone: string | null;
   website: string | null;
   address: string | null;
+  logo_url: string | null;
+  photos: string[] | null;
 };
 
 function mapProvider(r: ProviderRow): Provider {
@@ -60,6 +62,8 @@ function mapProvider(r: ProviderRow): Provider {
     phone: r.phone ?? "",
     website: r.website ?? "",
     address: r.address ?? "",
+    logoUrl: r.logo_url ?? null,
+    photos: r.photos ?? [],
   };
 }
 
@@ -379,18 +383,28 @@ export async function getProviderExceptions(
 }
 
 /** De salon van de ingelogde aanbieder (eigenaar), ongeacht status. */
-export async function getOwnedProvider(): Promise<Provider | null> {
+/** Alle salons van de ingelogde aanbieder. */
+export async function getOwnedProviders(): Promise<Provider[]> {
   const supabase = await db();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) return [];
   const { data } = await supabase
     .from("providers")
     .select("*")
     .eq("owner_user_id", user.id)
-    .maybeSingle();
-  return data ? mapProvider(data as ProviderRow) : null;
+    .order("created_at", { ascending: true });
+  return (data as ProviderRow[] | null)?.map(mapProvider) ?? [];
+}
+
+/** De actieve salon (via cookie), of de eerste. */
+export async function getOwnedProvider(): Promise<Provider | null> {
+  const providers = await getOwnedProviders();
+  if (providers.length === 0) return null;
+  const cookieStore = await cookies();
+  const activeId = cookieStore.get("active_salon")?.value;
+  return providers.find((p) => p.id === activeId) ?? providers[0];
 }
 
 type AppointmentRow = {

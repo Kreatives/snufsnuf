@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
+import { getCurrentUser } from "@/lib/session";
 
 const interTight = Inter_Tight({
   variable: "--font-inter-tight",
@@ -15,11 +16,12 @@ export const metadata: Metadata = {
     "De boekingslaag voor dierenzorg in Nederland. Gematcht op wat je dier nodig heeft, niet op wie bovenaan staat.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const user = await getCurrentUser();
   return (
     <html lang="nl" className={`${interTight.variable} h-full`}>
       <body className="min-h-full flex flex-col">
-        <SiteHeader />
+        <SiteHeader user={user} />
         <div className="flex-1">{children}</div>
       </body>
     </html>

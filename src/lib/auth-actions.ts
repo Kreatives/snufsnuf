@@ -171,6 +171,11 @@ export async function createProviderAction(
         category,
       }));
       if (templates.length > 0) await supabase.from("services").insert(templates);
+      const cookieStore = await cookies();
+      cookieStore.set("active_salon", (data as { id: string }).id, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+      });
       revalidatePath("/");
       redirect("/dashboard");
     }

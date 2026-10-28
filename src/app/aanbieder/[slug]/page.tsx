@@ -23,7 +23,26 @@ export default async function ProviderPage({
         ← Terug naar zoeken
       </Link>
 
-      <div className="media-ph aspect-[21/9] rounded-lg mt-5" aria-hidden />
+      {provider.photos.length > 0 ? (
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={provider.photos[0]}
+            alt={provider.name}
+            className="w-full aspect-[16/9] object-cover rounded-lg"
+          />
+          {provider.photos[1] && (
+            <div className="grid grid-rows-2 gap-2">
+              {provider.photos.slice(1, 3).map((p) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={p} src={p} alt="" className="w-full h-full object-cover rounded-lg" />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="media-ph aspect-[21/9] rounded-lg mt-5" aria-hidden />
+      )}
 
       <div className="grid lg:grid-cols-12 gap-10 mt-8">
         <div className="lg:col-span-7">

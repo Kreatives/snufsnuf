@@ -95,6 +95,8 @@ export interface Provider {
   phone: string;
   website: string;
   address: string;
+  logoUrl: string | null;
+  photos: string[];
 }
 
 export interface Animal {
