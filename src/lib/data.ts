@@ -32,6 +32,10 @@ type ProviderRow = {
   mobiel: boolean;
   reschedule_min_hours: number;
   reschedule_fee_cents: number;
+  kvk: string | null;
+  phone: string | null;
+  website: string | null;
+  address: string | null;
 };
 
 function mapProvider(r: ProviderRow): Provider {
@@ -52,6 +56,10 @@ function mapProvider(r: ProviderRow): Provider {
     mobiel: r.mobiel,
     rescheduleMinHours: r.reschedule_min_hours ?? 0,
     rescheduleFeeCents: r.reschedule_fee_cents ?? 0,
+    kvk: r.kvk ?? "",
+    phone: r.phone ?? "",
+    website: r.website ?? "",
+    address: r.address ?? "",
   };
 }
 
@@ -267,6 +275,93 @@ export async function getMyAppointments(): Promise<MyAppointment[]> {
       isPast: Date.parse(r.starts_at) < now,
       isStay: !!r.ends_at,
       providerMoved: r.provider_moved ?? false,
+    };
+  });
+}
+
+export interface ProviderStats {
+  total: number;
+  upcoming: number;
+  thisWeek: number;
+  revenueCents: number;
+}
+
+export async function getProviderStats(providerId: string): Promise<ProviderStats> {
+  const supabase = await db();
+  const { data } = await supabase
+    .from("appointments")
+    .select("starts_at, status, price_cents, is_block")
+    .eq("provider_id", providerId);
+  const rows =
+    (data as { starts_at: string; status: string; price_cents: number; is_block: boolean }[] | null) ??
+    [];
+  const now = Date.now();
+  const weekEnd = now + 7 * 86400000;
+  const stats: ProviderStats = { total: 0, upcoming: 0, thisWeek: 0, revenueCents: 0 };
+  for (const r of rows) {
+    if (r.is_block || r.status === "geannuleerd") continue;
+    stats.total++;
+    const t = Date.parse(r.starts_at);
+    if (t >= now) stats.upcoming++;
+    if (t >= now && t < weekEnd) stats.thisWeek++;
+    if (["bevestigd", "aanwezig", "in_behandeling", "klaar", "opgehaald"].includes(r.status)) {
+      stats.revenueCents += r.price_cents;
+    }
+  }
+  return stats;
+}
+
+export interface UpcomingItem {
+  id: string;
+  dayLabel: string;
+  time: string;
+  serviceName: string;
+  animalName: string;
+  owner: string;
+  status: AppointmentStatus;
+}
+
+export async function getNextAppointments(
+  providerId: string,
+  limit = 6,
+): Promise<UpcomingItem[]> {
+  const supabase = await db();
+  const { data } = await supabase
+    .from("appointments")
+    .select("id, starts_at, service_name, owner_name, animal, status")
+    .eq("provider_id", providerId)
+    .eq("is_block", false)
+    .neq("status", "geannuleerd")
+    .gte("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true })
+    .limit(limit);
+  type Row = {
+    id: string;
+    starts_at: string;
+    service_name: string;
+    owner_name: string;
+    animal: { name: string };
+    status: AppointmentStatus;
+  };
+  return ((data as Row[] | null) ?? []).map((r) => {
+    const d = new Date(r.starts_at);
+    return {
+      id: r.id,
+      dayLabel: d.toLocaleDateString("nl-NL", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        timeZone: "Europe/Amsterdam",
+      }),
+      time: d.toLocaleTimeString("nl-NL", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Europe/Amsterdam",
+      }),
+      serviceName: r.service_name,
+      animalName: r.animal?.name ?? "",
+      owner: r.owner_name,
+      status: r.status,
     };
   });
 }

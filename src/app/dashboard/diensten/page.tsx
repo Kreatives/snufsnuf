@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { getOwnedProvider, getServicesByProvider } from "@/lib/data";
-import { DashboardNav } from "@/components/dashboard-nav";
 import { ServiceEditor } from "@/components/service-editor";
 import { deleteServiceAction } from "@/lib/provider-actions";
 import { fromPrice, euro, formatDuration } from "@/lib/pricing";
@@ -18,11 +17,8 @@ export default async function DienstenPage() {
   const services = await getServicesByProvider(provider.id);
 
   return (
-    <main className="mx-auto max-w-[760px] px-6 py-10">
-      <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
-        <h1 className="text-h2">Aanbod</h1>
-        <DashboardNav active="/dashboard/diensten" />
-      </div>
+    <div className="max-w-[760px]">
+      <h1 className="text-h2 mb-8">Aanbod</h1>
 
       {services.length > 0 && (
         <div className="flex flex-col gap-3 mb-8">
@@ -62,6 +58,6 @@ export default async function DienstenPage() {
       )}
 
       <ServiceEditor />
-    </main>
+    </div>
   );
 }

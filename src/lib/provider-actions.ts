@@ -325,6 +325,44 @@ export async function updateReschedulePolicyAction(
   return { success: true };
 }
 
+export async function updateSalonAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient(await cookies());
+  const providerId = await ownerProviderId(supabase);
+  if (!providerId) redirect("/inloggen");
+
+  const name = String(formData.get("name") || "").trim();
+  const city = String(formData.get("city") || "").trim();
+  const blurb = String(formData.get("blurb") || "").trim();
+  if (!name || !city) return { error: "Vul handelsnaam en stad in." };
+
+  const { error } = await supabase
+    .from("providers")
+    .update({
+      name,
+      owner: name,
+      category: String(formData.get("category") || "trimsalon"),
+      city,
+      kvk: String(formData.get("kvk") || "").trim(),
+      phone: String(formData.get("phone") || "").trim(),
+      website: String(formData.get("website") || "").trim(),
+      address: String(formData.get("address") || "").trim(),
+      blurb,
+      prikkelarm: formData.get("prikkelarm") === "on",
+      mobiel: formData.get("mobiel") === "on",
+      skills: formData.getAll("skills").map(String),
+    })
+    .eq("id", providerId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/instellingen");
+  revalidatePath("/");
+  revalidatePath(`/aanbieder`);
+  return { success: true };
+}
+
 export async function removeExceptionAction(formData: FormData) {
   const supabase = await createClient(await cookies());
   const id = String(formData.get("id") || "");

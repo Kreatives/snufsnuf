@@ -3,28 +3,35 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import {
   getOwnedProvider,
-  getProviderHours,
-  getProviderExceptions,
   getServicesByProvider,
-  getAgendaItems,
+  getProviderStats,
+  getNextAppointments,
 } from "@/lib/data";
-import { getAvailableSlots } from "@/lib/availability";
-import { DashboardNav } from "@/components/dashboard-nav";
-import { WeekAgenda } from "@/components/week-agenda";
-import { ManualEntryForm } from "@/components/manual-entry-form";
+import { euro } from "@/lib/pricing";
+import type { AppointmentStatus } from "@/lib/types";
 
-const SHORT = ["ma", "di", "wo", "do", "vr", "za", "zo"];
+const STATUS_LABEL: Record<AppointmentStatus, string> = {
+  aanvraag: "Aanvraag",
+  bevestigd: "Bevestigd",
+  verwacht: "Verwacht",
+  aanwezig: "Aanwezig",
+  in_behandeling: "In behandeling",
+  klaar: "Klaar",
+  opgehaald: "Opgehaald",
+  no_show: "No-show",
+  geannuleerd: "Geannuleerd",
+};
 
-function toMin(t: string): number {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="card p-5">
+      <p className="text-eyebrow">{label}</p>
+      <p className="text-display mt-2">{value}</p>
+    </div>
+  );
 }
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ week?: string }>;
-}) {
+export default async function OverviewPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/inloggen");
   if (user.role !== "aanbieder") redirect("/mijn-dieren");
@@ -32,124 +39,82 @@ export default async function DashboardPage({
   const provider = await getOwnedProvider();
   if (!provider) redirect("/dashboard/onboarding");
 
-  const { week } = await searchParams;
-  const weekOffset = Number(week) || 0;
-
-  // Maandag van de getoonde week bepalen
-  const now = new Date();
-  const todayISO = now.toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
-  const base = new Date(now);
-  base.setHours(12, 0, 0, 0);
-  const dow = (base.getDay() + 6) % 7; // 0 = maandag
-  const monday = new Date(base);
-  monday.setDate(base.getDate() - dow + weekOffset * 7);
-
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const dt = new Date(monday);
-    dt.setDate(monday.getDate() + i);
-    const iso = dt.toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
-    return {
-      iso,
-      short: SHORT[i],
-      dayNum: Number(iso.slice(8, 10)),
-      isToday: iso === todayISO,
-      weekday: new Date(`${iso}T12:00:00Z`).getUTCDay(),
-    };
-  });
-
-  const rangeStart = new Date(monday);
-  rangeStart.setHours(0, 0, 0, 0);
-  const rangeEnd = new Date(rangeStart);
-  rangeEnd.setDate(rangeStart.getDate() + 7);
-
-  const [hourRows, exceptionRows, services, items, rescheduleSlots] = await Promise.all([
-    getProviderHours(provider.id),
-    getProviderExceptions(provider.id),
+  const [stats, next, services] = await Promise.all([
+    getProviderStats(provider.id),
+    getNextAppointments(provider.id, 6),
     getServicesByProvider(provider.id),
-    getAgendaItems(provider.id, rangeStart, rangeEnd),
-    getAvailableSlots(provider.id, { days: 30 }),
   ]);
 
-  const hours: Record<number, { open: number; close: number }> = {};
-  for (const h of hourRows) {
-    hours[h.weekday] = { open: toMin(h.open_time), close: toMin(h.close_time) };
-  }
-  const exceptions: Record<string, string> = {};
-  for (const e of exceptionRows) exceptions[e.date] = e.reason;
-
-  const timedItems = items.filter((i) => !i.isMultiDay);
-  const allDayItems = items.filter((i) => i.isMultiDay);
-
-  const rangeLabel = `${new Date(days[0].iso).toLocaleDateString("nl-NL", {
-    day: "numeric",
-    month: "short",
-  })} – ${new Date(days[6].iso).toLocaleDateString("nl-NL", {
-    day: "numeric",
-    month: "short",
-  })}`;
-
   return (
-    <main className="mx-auto max-w-[1200px] px-6 py-10">
-      <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
-        <div>
-          <Link
-            href={`/aanbieder/${provider.slug}`}
-            className="text-eyebrow hover:text-ink transition-colors"
-          >
-            {provider.name} · bekijk salon ↗
-          </Link>
-          <h1 className="text-h2">Weekoverzicht</h1>
-        </div>
-        <DashboardNav active="/dashboard" />
+    <div>
+      <div className="mb-8">
+        <p className="text-eyebrow">{provider.name}</p>
+        <h1 className="text-h2">Overzicht</h1>
       </div>
 
-      <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/dashboard?week=${weekOffset - 1}`}
-            className="btn btn-ghost h-9 w-9 px-0"
-            aria-label="Vorige week"
-          >
-            ←
-          </Link>
-          <Link
-            href={`/dashboard?week=${weekOffset + 1}`}
-            className="btn btn-ghost h-9 w-9 px-0"
-            aria-label="Volgende week"
-          >
-            →
-          </Link>
-          {weekOffset !== 0 && (
-            <Link href="/dashboard" className="btn btn-ghost h-9 px-4">
-              Vandaag
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        <Metric label="Aankomende afspraken" value={String(stats.upcoming)} />
+        <Metric label="Deze week" value={String(stats.thisWeek)} />
+        <Metric label="Boekingen totaal" value={String(stats.total)} />
+        <Metric label="Omzet" value={euro(stats.revenueCents)} />
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-h3">Aankomende afspraken</h2>
+            <Link href="/dashboard/agenda" className="text-[0.875rem] text-muted hover:text-ink">
+              Naar agenda
             </Link>
-          )}
-          <p className="text-h3 ml-2">{rangeLabel}</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            {next.length === 0 && (
+              <p className="card p-5 text-muted text-[0.9375rem]">
+                Nog geen aankomende afspraken.
+              </p>
+            )}
+            {next.map((a) => (
+              <article key={a.id} className="card p-4 flex items-center gap-4">
+                <div className="text-center w-20 shrink-0">
+                  <p className="text-[0.875rem] font-medium capitalize">{a.dayLabel}</p>
+                  <p className="text-[0.8125rem] text-muted">{a.time}</p>
+                </div>
+                <div className="flex-1 min-w-0 border-l border-line pl-4">
+                  <p className="font-medium truncate">
+                    {a.animalName}{" "}
+                    <span className="text-muted font-normal">· {a.serviceName}</span>
+                  </p>
+                  <p className="text-[0.8125rem] text-muted truncate">{a.owner}</p>
+                </div>
+                <span className="chip shrink-0">{STATUS_LABEL[a.status]}</span>
+              </article>
+            ))}
+          </div>
         </div>
-        <p className="text-[0.9375rem] text-muted">
-          {items.length} {items.length === 1 ? "afspraak" : "afspraken"} deze week ·{" "}
-          {services.length} diensten
-        </p>
+
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-h3">Aanbod</h2>
+            <Link href="/dashboard/diensten" className="text-[0.875rem] text-muted hover:text-ink">
+              Beheren
+            </Link>
+          </div>
+          <div className="card p-5 flex flex-col gap-2 text-[0.9375rem]">
+            {services.length === 0 ? (
+              <p className="text-muted">Nog geen producten.</p>
+            ) : (
+              services.map((s) => (
+                <div key={s.id} className="flex justify-between">
+                  <span className="truncate">{s.name}</span>
+                  <span className="text-muted shrink-0">
+                    {s.perNight ? "per nacht" : s.perHour ? "per uur" : ""}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
-
-      <div className="mb-4">
-        <ManualEntryForm />
-      </div>
-
-      <WeekAgenda
-        days={days}
-        items={timedItems}
-        allDayItems={allDayItems}
-        rescheduleSlots={rescheduleSlots}
-        hours={hours}
-        exceptions={exceptions}
-      />
-
-      {items.length === 0 && (
-        <p className="text-[0.9375rem] text-muted mt-4">
-          Nog geen afspraken deze week. Nieuwe boekingen verschijnen hier automatisch.
-        </p>
-      )}
-    </main>
+    </div>
   );
 }

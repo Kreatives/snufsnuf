@@ -91,6 +91,10 @@ export interface Provider {
   mobiel: boolean;
   rescheduleMinHours: number;
   rescheduleFeeCents: number;
+  kvk: string;
+  phone: string;
+  website: string;
+  address: string;
 }
 
 export interface Animal {
