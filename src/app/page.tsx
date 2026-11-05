@@ -55,6 +55,25 @@ function Eyebrow({ children, color = TERRA }: { children: React.ReactNode; color
   );
 }
 
+/* Golvende overgang tussen twee secties: bovenkleur = sectie erboven,
+   onderkleur = sectie eronder. */
+function SectionWave({ top, bottom }: { top: string; bottom: string }) {
+  return (
+    <div aria-hidden className="leading-[0]" style={{ background: top }}>
+      <svg
+        viewBox="0 0 1440 48"
+        preserveAspectRatio="none"
+        className="block w-full h-10 md:h-14"
+      >
+        <path
+          d="M0,24 C240,8 480,8 720,24 C960,40 1200,40 1440,24 L1440,48 L0,48 Z"
+          fill={bottom}
+        />
+      </svg>
+    </div>
+  );
+}
+
 export default function HomePage() {
   return (
     <main style={{ background: "#fff", color: GREEN }}>
@@ -256,6 +275,8 @@ export default function HomePage() {
         </div>
       </section>
 
+      <SectionWave top="#fff" bottom={PINK} />
+
       {/* 5 — AANBOD */}
       <section style={{ background: PINK }}>
         <div className="mx-auto max-w-[1160px] px-6 py-16 md:py-24">
@@ -297,6 +318,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <SectionWave top={PINK} bottom="#fff" />
 
       {/* 6 — BEWIJS */}
       <section className="mx-auto max-w-[1160px] px-6 py-16 md:py-24">
@@ -471,6 +494,8 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <SectionWave top="#fff" bottom={MINT} />
 
       {/* 9 — LAATSTE CTA */}
       <section style={{ background: MINT }}>
