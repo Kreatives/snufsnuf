@@ -172,3 +172,31 @@ body {
   outline: 2px solid var(--color-ink);
   outline-offset: 2px;
 }
+
+/* Prijs-pins op de zoekkaart (Leaflet divIcon → plain CSS, geen Tailwind) */
+.price-pin__label {
+  display: inline-block;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  color: var(--color-ink);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(20, 20, 19, 0.18);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+.price-pin:hover .price-pin__label {
+  background: var(--color-ink);
+  color: #ffffff;
+  border-color: var(--color-ink);
+  transform: translate(-50%, -50%) scale(1.06);
+}
+.leaflet-container {
+  font: inherit;
+  background: #eef0ec;
+}

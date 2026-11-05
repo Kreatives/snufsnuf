@@ -157,6 +157,27 @@ export async function getProviders(): Promise<Provider[]> {
   return (data as ProviderRow[] | null)?.map(mapProvider) ?? [];
 }
 
+/** Goedkoopste "vanaf"-prijs (in centen) per aanbieder, voor kaart + lijst. */
+export async function getProviderMinPrices(): Promise<Record<string, number>> {
+  const supabase = await db();
+  const { data } = await supabase
+    .from("services")
+    .select("provider_id, base_price_cents, variants")
+    .eq("status", "published");
+  const out: Record<string, number> = {};
+  for (const r of (data as
+    | { provider_id: string; base_price_cents: number; variants: { priceCents?: number }[] | null }[]
+    | null) ?? []) {
+    const variantMin =
+      r.variants && r.variants.length
+        ? Math.min(...r.variants.map((v) => v.priceCents ?? r.base_price_cents))
+        : r.base_price_cents;
+    const price = Math.min(variantMin, r.base_price_cents);
+    if (out[r.provider_id] == null || price < out[r.provider_id]) out[r.provider_id] = price;
+  }
+  return out;
+}
+
 export async function getProviderBySlug(slug: string): Promise<Provider | null> {
   const supabase = await db();
   const { data } = await supabase.from("providers").select("*").eq("slug", slug).maybeSingle();
