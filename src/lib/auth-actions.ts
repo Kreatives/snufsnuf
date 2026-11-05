@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import type { SizeClass, CoatType } from "./types";
 
 export interface ActionState {
@@ -35,18 +36,33 @@ export async function registerAction(
     return { error: "Vul een e-mailadres in en een wachtwoord van minstens 6 tekens." };
   }
 
-  const supabase = await createClient(await cookies());
-  const { data, error } = await supabase.auth.signUp({
+  // Maak de gebruiker meteen bevestigd aan (prototype: geen e-mailbevestiging nodig).
+  const admin = createAdminClient();
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email,
     password,
-    options: { data: { role, display_name: name } },
+    email_confirm: true,
+    user_metadata: { role, display_name: name },
   });
-
-  if (error) return { error: error.message };
-
-  if (!data.session) {
-    redirect("/inloggen?info=bevestig");
+  if (createErr) {
+    if (/already|exists|registered/i.test(createErr.message)) {
+      return { error: "Er bestaat al een account met dit e-mailadres. Log direct in." };
+    }
+    return { error: createErr.message };
   }
+
+  // Zorg dat het profiel bestaat (de trigger vuurt niet altijd op admin.createUser).
+  if (created.user) {
+    await admin
+      .from("profiles")
+      .upsert({ id: created.user.id, role, display_name: name }, { onConflict: "id" });
+  }
+
+  // Direct inloggen zodat de sessiecookie meteen wordt gezet.
+  const supabase = await createClient(await cookies());
+  const { error: signErr } = await supabase.auth.signInWithPassword({ email, password });
+  if (signErr) redirect("/inloggen");
+
   redirect(role === "aanbieder" ? "/dashboard/onboarding" : "/mijn-dieren");
 }
 

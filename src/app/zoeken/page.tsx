@@ -7,8 +7,25 @@ const MINT = "#D6FDEC";
 const MUTED = "#5B6B61";
 const LINE = "#E7E6E0";
 
-export default async function ZoekenPage() {
-  const providers = await getProviders();
+export default async function ZoekenPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; loc?: string; straal?: string }>;
+}) {
+  const { q = "", loc = "", straal = "5" } = await searchParams;
+  const query = q.trim().toLowerCase();
+  const location = loc.trim().toLowerCase();
+
+  const all = await getProviders();
+  const providers = all.filter((p) => {
+    const haystack = [p.name, p.category, p.city, p.blurb, ...(p.skills ?? [])]
+      .join(" ")
+      .toLowerCase();
+    const matchesQuery = !query || haystack.includes(query);
+    const matchesLoc = !location || p.city.toLowerCase().includes(location);
+    return matchesQuery && matchesLoc;
+  });
+
   return (
     <main style={{ background: "#fff", color: GREEN }}>
       <div className="mx-auto max-w-[1160px] px-6">
@@ -37,7 +54,8 @@ export default async function ZoekenPage() {
           <form
             className="lg:col-span-5 rounded-2xl p-6 flex flex-col gap-4"
             style={{ background: "#fff", border: `1px solid ${LINE}` }}
-            action="#"
+            action="/zoeken"
+            method="get"
           >
             <div>
               <label className="block text-[0.875rem] font-medium mb-1.5" htmlFor="q" style={{ color: GREEN }}>
@@ -45,10 +63,11 @@ export default async function ZoekenPage() {
               </label>
               <input
                 id="q"
+                name="q"
                 className="w-full h-11 px-3.5 rounded-xl border text-[0.9375rem] bg-white outline-none focus:border-[#1F3A2E]"
                 style={{ borderColor: "#d4d1c8" }}
                 placeholder="Trimbeurt, kattentrimmer, aan huis…"
-                defaultValue="Trimbeurt"
+                defaultValue={q}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -58,9 +77,11 @@ export default async function ZoekenPage() {
                 </label>
                 <input
                   id="loc"
+                  name="loc"
                   className="w-full h-11 px-3.5 rounded-xl border text-[0.9375rem] bg-white outline-none focus:border-[#1F3A2E]"
                   style={{ borderColor: "#d4d1c8" }}
-                  defaultValue="Amsterdam"
+                  placeholder="Stad of plaats"
+                  defaultValue={loc}
                 />
               </div>
               <div>
@@ -69,9 +90,10 @@ export default async function ZoekenPage() {
                 </label>
                 <select
                   id="straal"
+                  name="straal"
                   className="w-full h-11 px-3.5 rounded-xl border text-[0.9375rem] bg-white outline-none focus:border-[#1F3A2E]"
                   style={{ borderColor: "#d4d1c8" }}
-                  defaultValue="5"
+                  defaultValue={straal}
                 >
                   <option value="5">5 km</option>
                   <option value="10">10 km</option>
@@ -118,11 +140,24 @@ export default async function ZoekenPage() {
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {providers.map((p) => (
-              <ProviderCard key={p.id} provider={p} />
-            ))}
-          </div>
+          {providers.length === 0 ? (
+            <div
+              className="rounded-2xl p-10 text-center"
+              style={{ background: "#fff", border: `1px solid ${LINE}`, color: MUTED }}
+            >
+              <p className="text-[1.0625rem]" style={{ color: GREEN }}>
+                Geen aanbieders gevonden{query ? ` voor “${q}”` : ""}
+                {location ? ` in ${loc}` : ""}.
+              </p>
+              <p className="mt-2 text-[0.9375rem]">Probeer een andere zoekterm of plaats.</p>
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {providers.map((p) => (
+                <ProviderCard key={p.id} provider={p} />
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </main>
