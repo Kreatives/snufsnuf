@@ -1,3 +1,5 @@
+import { DateField } from "@/components/date-field";
+
 const TERRA = "#C84E38";
 
 const CATS: [string, string][] = [
@@ -32,15 +34,7 @@ export function AirbnbSearch({ loc, date, cat }: { loc: string; date: string; ca
 
         <span className="hidden sm:block w-px h-9 bg-line shrink-0" />
 
-        <label className="group flex-1 rounded-full px-5 py-2.5 cursor-text hover:bg-bg transition-colors">
-          <span className="block text-[0.75rem] font-semibold text-ink">Wanneer</span>
-          <input
-            name="date"
-            type="date"
-            defaultValue={date}
-            className="w-full bg-transparent text-[0.9375rem] text-muted outline-none"
-          />
-        </label>
+        <DateField defaultValue={date} />
 
         <span className="hidden sm:block w-px h-9 bg-line shrink-0" />
 

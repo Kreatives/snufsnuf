@@ -17,6 +17,8 @@ export default async function ZoekenPage({
   const { q = "", loc = "", cat = "", date = "" } = await searchParams;
   const query = q.trim().toLowerCase();
   const location = loc.trim().toLowerCase();
+  // Kaart pas tonen nadat er is gezocht (een filter is ingevuld).
+  const hasSearched = Boolean(query || location || cat || date);
 
   const [all, minPrices] = await Promise.all([getProviders(), getProviderMinPrices()]);
   const providers = all.filter((p) => {
@@ -47,7 +49,7 @@ export default async function ZoekenPage({
       <AirbnbSearch loc={loc} date={date} cat={cat} />
 
       <div className="mx-auto max-w-[1680px] w-full px-5 sm:px-8 pb-16">
-        <div className="lg:grid lg:grid-cols-[1fr_minmax(360px,600px)] lg:gap-8">
+        <div className={hasSearched ? "lg:grid lg:grid-cols-[1fr_minmax(360px,600px)] lg:gap-8" : ""}>
           {/* Lijst */}
           <section className="min-w-0">
             <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
@@ -69,7 +71,9 @@ export default async function ZoekenPage({
                 <p className="mt-2 text-[0.9375rem]">Pas je plaats of soort zorg aan.</p>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-6">
+              <div
+                className={`grid gap-6 sm:grid-cols-2 ${hasSearched ? "" : "lg:grid-cols-3"}`}
+              >
                 {providers.map((p) => (
                   <ProviderCard key={p.id} provider={p} />
                 ))}
@@ -77,12 +81,14 @@ export default async function ZoekenPage({
             )}
           </section>
 
-          {/* Kaart — sticky naast de lijst, verborgen op mobiel */}
-          <aside className="hidden lg:block">
-            <div className="sticky top-[84px] h-[calc(100vh-108px)]">
-              <SearchMap items={mapItems} />
-            </div>
-          </aside>
+          {/* Kaart — pas na een zoekopdracht, sticky naast de lijst, verborgen op mobiel */}
+          {hasSearched && (
+            <aside className="hidden lg:block">
+              <div className="sticky top-[84px] h-[calc(100vh-108px)]">
+                <SearchMap items={mapItems} />
+              </div>
+            </aside>
+          )}
         </div>
       </div>
     </main>

@@ -291,27 +291,27 @@ export default function HomePage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-10">
             {[
-              { t: "Trimsalon", c: "Amsterdam · Utrecht · Rotterdam", p: "vanaf €30" },
-              { t: "Dagopvang", c: "Den Haag · Eindhoven · Arnhem", p: "vanaf €22 /dag" },
-              { t: "Pension", c: "Utrecht · Groningen · Tilburg", p: "vanaf €28 /nacht" },
-              { t: "Oppas aan huis", c: "Amsterdam · Haarlem · Breda", p: "vanaf €15 /uur" },
-              { t: "Uitlaatservice", c: "Rotterdam · Utrecht · Almere", p: "vanaf €12" },
-              { t: "Kattenoppas", c: "Overal in Nederland", p: "vanaf €14 /bezoek" },
-            ].map((cat) => (
+              { t: "Trimsalon", c: "Amsterdam · Utrecht · Rotterdam", p: "vanaf €30", cat: "trimsalon" },
+              { t: "Dagopvang", c: "Den Haag · Eindhoven · Arnhem", p: "vanaf €22 /dag", cat: "dagopvang" },
+              { t: "Pension", c: "Utrecht · Groningen · Tilburg", p: "vanaf €28 /nacht", cat: "pension" },
+              { t: "Oppas aan huis", c: "Amsterdam · Haarlem · Breda", p: "vanaf €15 /uur", cat: "oppas" },
+              { t: "Uitlaatservice", c: "Rotterdam · Utrecht · Almere", p: "vanaf €12", cat: "uitlaatservice" },
+              { t: "Kattenoppas", c: "Overal in Nederland", p: "vanaf €14 /bezoek", cat: "oppas" },
+            ].map((item) => (
               <Link
-                key={cat.t}
-                href="/zoeken"
+                key={item.t}
+                href={`/zoeken?cat=${item.cat}`}
                 className="rounded-2xl p-6 bg-white transition-transform hover:-translate-y-1"
                 style={{ border: `1px solid ${LINE}` }}
               >
                 <h3 className="font-display text-[1.35rem]" style={{ color: GREEN }}>
-                  {cat.t}
+                  {item.t}
                 </h3>
                 <p className="mt-1 text-[0.9rem]" style={{ color: MUTED }}>
-                  {cat.c}
+                  {item.c}
                 </p>
                 <p className="mt-4 text-[0.9rem] font-semibold" style={{ color: TERRA }}>
-                  {cat.p}
+                  {item.p}
                 </p>
               </Link>
             ))}
