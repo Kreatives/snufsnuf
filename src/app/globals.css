@@ -1,12 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #f4f3ef;
+  /* --color-bg = zachte vulling/hover-tint (geen paginakleur meer; body is wit) */
+  --color-bg: #f1f0ea;
   --color-surface: #ffffff;
-  --color-ink: #141413;
-  --color-muted: #6f6e69;
-  --color-line: #e4e2db;
-  --color-line-strong: #d4d1c8;
+  /* Merk-kleuren van de voorkant doorgetrokken naar de app-UI */
+  --color-ink: #1f3a2e;        /* deep green */
+  --color-accent: #c84e38;     /* terracotta */
+  --color-muted: #5b6b61;
+  --color-line: #e7e6e0;
+  --color-line-strong: #d7d4cb;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -38,7 +41,7 @@ html {
 }
 
 body {
-  background: var(--color-bg);
+  background: var(--color-surface);
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-size: 1rem;
@@ -93,10 +96,10 @@ body {
   }
   .btn-primary {
     background: var(--color-ink);
-    color: var(--color-bg);
+    color: #ffffff;
   }
   .btn-primary:hover {
-    background: #2b2a27;
+    background: #27493a;
   }
   .btn-ghost {
     background: transparent;

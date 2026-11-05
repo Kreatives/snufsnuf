@@ -35,6 +35,14 @@ export function DashboardSidebar({
 
   return (
     <aside className="w-60 shrink-0 border-r border-line bg-surface min-h-screen sticky top-0 flex flex-col">
+      {/* Merk — zelfde logo als de voorkant */}
+      <div className="px-4 pt-4 pb-3 border-b border-line">
+        <Link href="/" aria-label="Snuf Snuf" className="inline-flex">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/horizontal-green.svg" alt="Snuf Snuf" className="h-6 w-auto" />
+        </Link>
+      </div>
+
       {/* Salon-switcher */}
       <div className="p-3 border-b border-line relative">
         <button

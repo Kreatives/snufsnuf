@@ -30,16 +30,20 @@ export async function ProviderCard({ provider }: { provider: Provider }) {
 
   return (
     <article className="card overflow-hidden flex flex-col">
-      <Link href={`/aanbieder/${provider.slug}`} className="block aspect-[16/10]" aria-label={provider.name}>
+      <Link
+        href={`/aanbieder/${provider.slug}`}
+        className="relative block aspect-[16/10] overflow-hidden"
+        aria-label={provider.name}
+      >
         {provider.photos[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={provider.photos[0]}
             alt={provider.name}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
-          <span className="media-ph block w-full h-full" aria-hidden />
+          <span className="media-ph absolute inset-0" aria-hidden />
         )}
       </Link>
       <div className="p-5 flex flex-col gap-3 flex-1">
