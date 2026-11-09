@@ -163,6 +163,18 @@ export async function createStayBooking(
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Eerste boeking bij deze salon wordt een aanvraag die goedkeuring vraagt (gelijk aan createBooking).
+  let firstTime = false;
+  if (input.intake.email) {
+    const { data: prior } = await supabase
+      .from("appointments")
+      .select("id")
+      .eq("provider_id", input.providerId)
+      .eq("intake->>email", input.intake.email)
+      .limit(1);
+    firstTime = !prior || prior.length === 0;
+  }
+
   const { data, error } = await supabase
     .from("appointments")
     .insert({
@@ -177,7 +189,7 @@ export async function createStayBooking(
       ends_at: endsAt,
       duration_min: input.nights * 24 * 60,
       price_cents: input.priceCents,
-      status: "bevestigd",
+      status: firstTime ? "aanvraag" : "bevestigd",
       intake: {
         ...input.intake,
         dropoff: input.dropoff,

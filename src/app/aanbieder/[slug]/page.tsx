@@ -15,7 +15,14 @@ export default async function ProviderPage({
   if (!provider) notFound();
 
   const svc = await getServicesByProvider(provider.id);
-  const slots = await getAvailableSlots(provider.id, { days: 14 });
+  // Tijdgebonden dienst (geen verblijf/oppas-per-uur) bepaalt de slot-kalender.
+  const timedService = svc.find((s) => !s.perNight && !s.perHour);
+  const slots = timedService
+    ? await getAvailableSlots(provider.id, {
+        days: 14,
+        durationMin: timedService.baseDurationMin || 60,
+      })
+    : [];
 
   return (
     <main className="mx-auto max-w-[1200px] px-6 py-10">
@@ -132,13 +139,23 @@ export default async function ProviderPage({
         <aside className="lg:col-span-5">
           <div className="card p-5 lg:sticky lg:top-24">
             <h2 className="text-h3 mb-1">Beschikbaarheid</h2>
-            <p className="text-[0.875rem] text-muted mb-5">
-              Eerstvolgende vrije momenten, live uit de agenda.
-            </p>
-            <SlotCalendar
-              slots={slots}
-              linkBase={`/boeken/${provider.slug}/${svc[0]?.id}`}
-            />
+            {timedService ? (
+              <>
+                <p className="text-[0.875rem] text-muted mb-5">
+                  Eerstvolgende vrije momenten, live uit de agenda.
+                </p>
+                <SlotCalendar
+                  slots={slots}
+                  linkBase={`/boeken/${provider.slug}/${timedService.id}`}
+                />
+              </>
+            ) : (
+              <p className="text-[0.875rem] text-muted">
+                {svc.length > 0
+                  ? "Kies hiernaast een dienst om een periode te boeken."
+                  : "Deze aanbieder heeft nog geen diensten toegevoegd."}
+              </p>
+            )}
           </div>
         </aside>
       </div>

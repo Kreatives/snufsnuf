@@ -12,9 +12,7 @@ export const metadata: Metadata = {
 */
 
 const GREEN = "#1F3A2E";
-const GREEN_HOVER = "#16281F";
 const TERRA = "#C84E38";
-const TERRA_HOVER = "#B5442F";
 const SAND = "#F4F2EC";
 const LINE = "#E4E2DB";
 

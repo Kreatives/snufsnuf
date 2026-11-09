@@ -23,7 +23,9 @@ export function RescheduleControl({
     {},
   );
   const doneRef = useRef(onDone);
-  doneRef.current = onDone;
+  useEffect(() => {
+    doneRef.current = onDone;
+  }, [onDone]);
 
   useEffect(() => {
     if (state.success) {

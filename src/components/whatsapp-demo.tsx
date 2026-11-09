@@ -58,6 +58,8 @@ export function WhatsappDemo() {
     }
     const next = SCRIPT[count];
     if (next.from === "bot") {
+      // Bewuste animatie-stap (typ-indicator), geen afgeleide state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTyping(true);
       const t = setTimeout(() => {
         setTyping(false);

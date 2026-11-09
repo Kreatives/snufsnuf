@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Slot } from "@/lib/types";
 import { cancelAppointmentAction } from "@/lib/appointment-actions";
 import { RescheduleControl } from "@/components/reschedule-control";
 
 export function ConsumerAppointmentActions({ id, slots }: { id: string; slots: Slot[] }) {
+  const router = useRouter();
   const [moving, setMoving] = useState(false);
 
   return (
@@ -26,7 +28,16 @@ export function ConsumerAppointmentActions({ id, slots }: { id: string; slots: S
         </form>
       </div>
 
-      {moving && <RescheduleControl id={id} slots={slots} onDone={() => setMoving(false)} />}
+      {moving && (
+        <RescheduleControl
+          id={id}
+          slots={slots}
+          onDone={() => {
+            setMoving(false);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -64,13 +64,15 @@ export default async function MijnAfsprakenPage() {
   const upcoming = all.filter((a) => !a.isPast).reverse();
   const past = all.filter((a) => a.isPast);
 
-  // Vrije momenten per aanbieder ophalen, voor het verzetten.
-  const providerIds = [...new Set(upcoming.map((a) => a.providerId))];
-  const slotLists = await Promise.all(
-    providerIds.map((pid) => getAvailableSlots(pid, { days: 30 })),
+  // Vrije momenten per afspraak ophalen, met de juiste duur (stays krijgen geen uur-slots).
+  const slotsByAppt: Record<string, Slot[]> = {};
+  await Promise.all(
+    upcoming.map(async (a) => {
+      slotsByAppt[a.id] = a.isStay
+        ? []
+        : await getAvailableSlots(a.providerId, { days: 30, durationMin: a.durationMin || 60 });
+    }),
   );
-  const slotsByProvider: Record<string, Slot[]> = {};
-  providerIds.forEach((pid, i) => (slotsByProvider[pid] = slotLists[i]));
 
   return (
     <main className="mx-auto max-w-[760px] px-6 py-14">
@@ -95,7 +97,7 @@ export default async function MijnAfsprakenPage() {
           <h2 className="text-h3 mb-3">Komend</h2>
           <div className="flex flex-col gap-3">
             {upcoming.map((a) => (
-              <Card key={a.id} a={a} slots={slotsByProvider[a.providerId] ?? []} />
+              <Card key={a.id} a={a} slots={slotsByAppt[a.id] ?? []} />
             ))}
           </div>
         </section>

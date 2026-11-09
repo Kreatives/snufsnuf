@@ -10,9 +10,12 @@ const uid = () =>
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_PHOTOS = 8;
+// Moet overeenkomen met de allowed_mime_types van de 'salon-media'-bucket.
+const ACCEPT = "image/jpeg,image/png,image/webp,image/avif";
+const ALLOWED = ACCEPT.split(",");
 
 function validate(file: File): string | null {
-  if (!file.type.startsWith("image/")) return "Kies een afbeelding (jpg, png of webp).";
+  if (!ALLOWED.includes(file.type)) return "Kies een JPG, PNG, WebP of AVIF.";
   if (file.size > MAX_BYTES) return "Deze foto is te groot — maximaal 5 MB.";
   return null;
 }
@@ -112,7 +115,7 @@ export function PhotoManager({
           <input
             ref={logoInput}
             type="file"
-            accept="image/*"
+            accept={ACCEPT}
             className="hidden"
             onChange={onLogo}
           />
@@ -163,7 +166,7 @@ export function PhotoManager({
           <input
             ref={photoInput}
             type="file"
-            accept="image/*"
+            accept={ACCEPT}
             className="hidden"
             onChange={onAddPhoto}
           />

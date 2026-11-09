@@ -1,12 +1,6 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
-import type {
-  Provider,
-  Service,
-  Animal,
-  Appointment,
-  AppointmentStatus,
-} from "./types";
+import type { Provider, Service, Animal, AppointmentStatus } from "./types";
 
 async function db() {
   const cookieStore = await cookies();

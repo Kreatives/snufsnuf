@@ -23,9 +23,10 @@ interface Props {
 }
 
 function isoPlus(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  // Civiele datum in Europe/Amsterdam + N dagen (geen UTC-verschuiving rond middernacht).
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
+  const [y, m, d] = today.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
 export function BookingFlow({
@@ -154,7 +155,7 @@ export function BookingFlow({
     current === "Dier"
       ? !!chosen && (animalId !== "new" || draft.name.trim() !== "")
       : current === "Verblijf"
-        ? nights > 0
+        ? nights >= Math.max(1, service.minNights)
         : current === "Oppas"
           ? hoursCount > 0
           : current === "Moment"
@@ -631,11 +632,16 @@ export function BookingFlow({
                   </select>
                 </div>
               </div>
-              {nights <= 0 && (
+              {nights <= 0 ? (
                 <p className="chip chip-alert w-fit">Vertrek moet na aankomst liggen.</p>
-              )}
-              {service.minNights > 1 && (
-                <p className="text-[0.8125rem] text-muted">Minimaal {service.minNights} nachten.</p>
+              ) : service.minNights > 1 && nights < service.minNights ? (
+                <p className="chip chip-alert w-fit">
+                  Minimaal {service.minNights} nachten — je koos er nu {nights}.
+                </p>
+              ) : (
+                service.minNights > 1 && (
+                  <p className="text-[0.8125rem] text-muted">Minimaal {service.minNights} nachten.</p>
+                )
               )}
             </div>
           </section>

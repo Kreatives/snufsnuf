@@ -58,6 +58,13 @@ export async function getAvailableSlots(
     hours.set(h.weekday, { open: oh * 60 + om, close: ch * 60 + cm });
   }
 
+  // Weekdag (0=zo..6=za) in Europe/Amsterdam, consistent met amsParts hierboven.
+  const dowFmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Amsterdam",
+    weekday: "short",
+  });
+  const DOW: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
   const now = new Date();
   const windowEnd = new Date(now);
   windowEnd.setDate(windowEnd.getDate() + days + 1);
@@ -77,13 +84,14 @@ export async function getAvailableSlots(
 
   const slots: Slot[] = [];
   for (let offset = 1; offset <= days; offset++) {
-    const day = new Date(now);
-    day.setDate(now.getDate() + offset);
-    day.setHours(12, 0, 0, 0);
-    const h = hours.get(day.getDay());
-    if (!h) continue;
+    // Middag-UTC als anker, zodat de civiele datum in Amsterdam eenduidig is.
+    const probe = new Date(now);
+    probe.setUTCHours(12, 0, 0, 0);
+    probe.setUTCDate(probe.getUTCDate() + offset);
 
-    const iso = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+    const iso = probe.toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
+    const h = hours.get(DOW[dowFmt.format(probe)]);
+    if (!h) continue;
     if (closedDates.has(iso)) continue;
     for (let t = h.open; t + durationMin <= h.close; t += stepMin) {
       const taken = (busy[iso] ?? []).some(([s, e]) => t < e && t + durationMin > s);

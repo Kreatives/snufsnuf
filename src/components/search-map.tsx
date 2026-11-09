@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import "leaflet/dist/leaflet.css";
 import type { Map as LeafletMap, Marker } from "leaflet";
 
@@ -14,6 +15,7 @@ export type MapItem = {
 };
 
 export function SearchMap({ items }: { items: MapItem[] }) {
+  const router = useRouter();
   const holder = useRef<HTMLDivElement>(null);
   const map = useRef<LeafletMap | null>(null);
   const markers = useRef<Marker[]>([]);
@@ -55,7 +57,7 @@ export function SearchMap({ items }: { items: MapItem[] }) {
           .addTo(map.current!)
           .bindTooltip(it.name, { direction: "top", offset: [0, -14] })
           .on("click", () => {
-            window.location.href = `/aanbieder/${it.slug}`;
+            router.push(`/aanbieder/${it.slug}`);
           });
         markers.current.push(marker);
         latlngs.push([it.lat, it.lng]);
@@ -74,7 +76,7 @@ export function SearchMap({ items }: { items: MapItem[] }) {
     return () => {
       cancelled = true;
     };
-  }, [items]);
+  }, [items, router]);
 
   return (
     <div
