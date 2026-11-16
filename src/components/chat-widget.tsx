@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { searchProviders, getChatFacets, type ChatResult } from "@/lib/chat-actions";
+import { searchProviders, countProviders, getChatFacets, type ChatResult } from "@/lib/chat-actions";
 import type { ProviderCategory, Species } from "@/lib/types";
 
 const GREEN = "#1F3A2E";
@@ -29,6 +29,19 @@ const INTENTS: { key: IntentKey; label: string; emoji: string; cats: ProviderCat
 
 const intentLabel = (k: IntentKey) => INTENTS.find((i) => i.key === k)!.label;
 const intentCats = (k: IntentKey) => INTENTS.find((i) => i.key === k)!.cats;
+
+const INTENT_PLURAL: Record<IntentKey, string> = {
+  trim: "trimsalons",
+  opvang: "dagopvanglocaties",
+  pension: "pensions",
+  oppas: "oppassers",
+  uitlaat: "uitlaatservices",
+};
+
+// "Overal / hele website / maakt niet uit" → zoek door het hele land.
+const BROADEN = /overal|heel nederland|hele website|hele site|het hele land|alle steden|elke stad|maakt niet uit|geen voorkeur|boeit niet|hele platform/;
+// Telvraag: "hoeveel trimsalons…", "aantal aanbieders…"
+const COUNT_Q = /hoeveel|aantal|how many/;
 
 const CAT_KEYWORDS: [RegExp, IntentKey][] = [
   [/trim|knip|vacht|scheren|plukken|wassen|hondenkapper|kattenkapper|kapper/, "trim"],
@@ -76,6 +89,7 @@ type Chip =
   | { label: string; type: "city"; value: string }
   | { label: string; type: "restart" }
   | { label: string; type: "newcity" }
+  | { label: string; type: "search"; intent: IntentKey | null; city: string }
   | { label: string; type: "link"; href: string };
 
 type Msg =
@@ -249,11 +263,54 @@ export function ChatWidget() {
       if (re.test(t)) { s.species = sp; break; }
     }
     const city = detectCity(text);
-    if (city) { s.city = city; s.cityKnown = true; }
-    else if (pending.current === "city") {
+    if (city) {
+      s.city = city;
+      s.cityKnown = true;
+    } else if (BROADEN.test(t)) {
+      s.city = "";
+      s.cityKnown = true;
+    } else if (pending.current === "city") {
       const guess = guessCity(text);
       if (guess) { s.city = guess; s.cityKnown = true; }
     }
+  }
+
+  /** Beantwoordt "hoeveel …"-vragen met een echt aantal i.p.v. een zoekopdracht. */
+  async function answerCount(text: string) {
+    pending.current = null;
+    const t = ` ${text.toLowerCase()} `;
+    let intent: IntentKey | null = null;
+    for (const [re, key] of CAT_KEYWORDS) {
+      if (re.test(t)) { intent = key; break; }
+    }
+    if (!intent && slots.current.intent) intent = slots.current.intent;
+    // Telvraag gaat standaard over het hele platform, tenzij er een plaats in staat.
+    const cityInMsg = detectCity(text) ?? "";
+
+    setTyping(true);
+    let n = 0;
+    try {
+      n = await countProviders({ categories: intent ? intentCats(intent) : [], city: cityInMsg });
+    } catch {
+      n = 0;
+    }
+    await sleep(300);
+    setTyping(false);
+
+    const what = intent ? INTENT_PLURAL[intent] : "aanbieders";
+    const waar = cityInMsg ? ` in ${cityInMsg}` : "";
+    if (n === 0) {
+      await botSay(`Er staan op dit moment nog geen ${what}${waar} op Snuf Snuf.`, {
+        chips: [{ label: "🔄 Opnieuw zoeken", type: "restart" }],
+      });
+      return;
+    }
+    await botSay(`Er staan op dit moment ${n} ${what}${waar} op Snuf Snuf. Wil je ze zien?`, {
+      chips: [
+        { label: "Ja, laat zien", type: "search", intent, city: cityInMsg },
+        { label: "🔄 Opnieuw zoeken", type: "restart" },
+      ],
+    });
   }
 
   async function handleText(raw: string) {
@@ -262,8 +319,12 @@ export function ChatWidget() {
     setBusy(true);
     setInput("");
     pushUser(text);
-    parse(text);
-    await advance();
+    if (COUNT_Q.test(text.toLowerCase())) {
+      await answerCount(text);
+    } else {
+      parse(text);
+      await advance();
+    }
     setBusy(false);
     inputRef.current?.focus();
   }
@@ -285,6 +346,12 @@ export function ChatWidget() {
       slots.current.city = "";
       slots.current.cityKnown = false;
       await advance();
+    } else if (chip.type === "search") {
+      pushUser(chip.label);
+      slots.current.intent = chip.intent;
+      slots.current.city = chip.city;
+      slots.current.cityKnown = true;
+      await runSearch();
     } else if (chip.type === "restart") {
       pushUser("Opnieuw zoeken");
       await greet();
@@ -338,7 +405,7 @@ export function ChatWidget() {
                   {m.results && m.results.length > 0 && (
                     <div className="flex flex-col gap-2 pr-6">
                       {m.results.map((r) => (
-                        <ResultCard key={r.slug} r={r} />
+                        <ResultCard key={r.slug} r={r} onNavigate={() => setOpen(false)} />
                       ))}
                     </div>
                   )}
@@ -476,10 +543,11 @@ function Bubble({ side, children }: { side: "user" | "bot"; children: React.Reac
   );
 }
 
-function ResultCard({ r }: { r: ChatResult }) {
+function ResultCard({ r, onNavigate }: { r: ChatResult; onNavigate: () => void }) {
   return (
     <Link
       href={`/aanbieder/${r.slug}`}
+      onClick={onNavigate}
       className="ss-pop flex items-center gap-3 rounded-xl border bg-white px-3 py-2.5 shadow-sm transition-transform hover:-translate-y-px"
       style={{ borderColor: "#E4E2DB" }}
     >

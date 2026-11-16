@@ -44,6 +44,21 @@ export async function getChatFacets(): Promise<{ categories: ProviderCategory[];
   return { categories, cities };
 }
 
+/** Telt hoeveel aanbieders er (optioneel gefilterd) op het platform staan. */
+export async function countProviders(input: {
+  categories?: ProviderCategory[];
+  city?: string;
+}): Promise<number> {
+  const categories = input.categories ?? [];
+  const city = (input.city ?? "").trim().toLowerCase();
+  const all = await getProviders();
+  return all.filter((p) => {
+    const matchesCat = categories.length === 0 || categories.includes(p.category);
+    const matchesCity = !city || p.city.toLowerCase().includes(city);
+    return matchesCat && matchesCity;
+  }).length;
+}
+
 export async function searchProviders(input: {
   categories?: ProviderCategory[];
   city?: string;
