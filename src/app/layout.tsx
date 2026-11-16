@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
+import { ChatWidget } from "@/components/chat-widget";
 import { getCurrentUser } from "@/lib/session";
 
 const interTight = Inter_Tight({
@@ -27,6 +28,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <SiteHeader user={user} />
         <div className="flex-1">{children}</div>
+        <ChatWidget />
       </body>
     </html>
   );
